@@ -1,0 +1,40 @@
+{
+  "name": "@cisl/io-speaker",
+  "version": "1.0.0",
+  "description": "Plugin for @cisl/io for interop with speaker-worker",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "typedocMain": "src/index.ts",
+  "scripts": {
+    "build": "yarn clean && yarn compile",
+    "compile": "tsc -p tsconfig.build.json && node ../../utils/dist-transformer.js",
+    "clean": "rimraf dist",
+    "watch": "tsc -w",
+    "prepublishOnly": "echo \"Do not run publish directly, run tsc-publish\" && exit 1",
+    "tsc-publish": "tsc-publish"
+  },
+  "engines": {
+    "node": ">=8"
+  },
+  "contributors": [
+    {
+      "name": "Matthew Peveler",
+      "email": "pevelm@rpi.edu"
+    }
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cislrpi/io-speaker"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "license": "MIT",
+  "peerDependencies": {
+    "@cisl/io": ">= 1.0.0"
+  },
+  "devDependencies": {
+    "@cisl/io": "^1.0.0"
+  },
+  "dependencies": {}
+}

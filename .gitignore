@@ -1,0 +1,12 @@
+node_modules/
+lib/
+.ignore/
+npm-debug.log
+cog.json
+dist/
+package-lock.json
+yarn.lock
+
+docs/
+.DS_Store
+yarn-error.log

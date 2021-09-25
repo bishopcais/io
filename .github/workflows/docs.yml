@@ -1,0 +1,30 @@
+name: Publish docs
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      node-version: 14.x
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Use Node.js ${{ env.node-version }}
+      uses: actions/setup-node@v1
+      with:
+        node-version: ${{ env.node-version }}
+
+    - run: yarn
+
+    - run: yarn docs
+
+    - name: Deploy docs to gh-pages
+      uses: JamesIves/github-pages-deploy-action@4.1.4
+      with:
+        branch: gh-pages
+        folder: docs

@@ -1,0 +1,17 @@
+{
+  "extends": "./tsconfig.build.json",
+
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@cisl/io/*": ["packages/io/src/*"],
+      "@cisl/io": ["packages/io/src"],
+    },
+    "noEmit": true
+  },
+  "exclude": [
+    "dist",
+    "node_modules",
+    "packages/*/dist"
+  ]
+}
