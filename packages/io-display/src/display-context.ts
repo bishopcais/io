@@ -1,5 +1,5 @@
 import { Io } from '@cisl/io/io';
-import isEmpty from 'lodash/isempty';
+import isEmpty from 'lodash.isempty';
 
 import { DisplayWindow } from './display-window';
 import { ViewObject } from './view-object';
