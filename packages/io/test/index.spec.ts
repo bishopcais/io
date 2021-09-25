@@ -34,7 +34,7 @@ test('calling with options then no options returns same instance', () => {
 
 test('registerPlugin', () => {
   let registerFuncIo: Io | null = null;
-  const registerFunction = (io: Io) => {
+  const registerFunction = (io: Io): void => {
     registerFuncIo = io;
   };
 

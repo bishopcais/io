@@ -1,11 +1,11 @@
 import { join } from 'path';
 import Io from '../src/io';
 
-test('blank io object', () => {
+test('blank io object throws on core properties', () => {
   const io = new Io({cogPath: join(__dirname, 'data', 'cog.json')});
-  expect(io.rabbit).toBeUndefined;
-  expect(io.redis).toBeUndefined;
-  expect(io.mongo).toBeUndefined;
+  expect(() => io.rabbit).toThrowError();
+  expect(() => io.redis).toThrowError();
+  expect(() => io.mongo).toThrowError();
 });
 
 test('Io.generateUuid', () => {

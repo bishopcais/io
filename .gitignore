@@ -3,6 +3,7 @@ lib/
 .ignore/
 npm-debug.log
 cog.json
+!packages/io/test/data/cog.json
 dist/
 package-lock.json
 yarn.lock
