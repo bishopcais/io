@@ -24,7 +24,7 @@ jobs:
     - run: yarn config set ignore-engines true
       if: matrix.node-version == '10.x'
 
-    - run: yarn
+    - run: yarn --no-lockfile
 
     - run: yarn lint || true
 

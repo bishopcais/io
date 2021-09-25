@@ -19,7 +19,7 @@ jobs:
       with:
         node-version: ${{ env.node-version }}
 
-    - run: yarn
+    - run: yarn --no-lockfile
 
     - run: yarn docs
 
