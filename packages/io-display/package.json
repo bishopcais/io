@@ -37,7 +37,7 @@
     "@cisl/io": ">=1.0.0"
   },
   "devDependencies": {
-    "@types/lodash.isempty": "^4.4.6",
+    "@types/lodash": "^4.14.174",
     "@cisl/io": "^1.2.1"
   }
 }
