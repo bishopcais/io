@@ -5,7 +5,7 @@
   "license": "MIT",
   "private": true,
   "scripts": {
-    "docs": "typedoc --exclude \"packages/*/dist/**/*.ts\" --entryPointStrategy packages . && cp -R img docs/",
+    "docs": "typedoc && cp -R img docs/",
     "io:build": "yarn workspace @cisl/io build",
     "io-celio-speaker:build": "yarn workspace @cisl/io-celio-speaker build",
     "io-celio-transcript:build": "yarn workspace @cisl/io-celio-transcript build",
@@ -32,7 +32,7 @@
     "eslint": "^7.1.0",
     "jest": "^27.0.6",
     "ts-jest": "^27.0.3",
-    "typedoc": "^0.22.4",
+    "typedoc": "^0.22.7",
     "typescript": "^4.4.3"
   },
   "devDependencies": {

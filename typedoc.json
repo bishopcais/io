@@ -1,0 +1,11 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "entryPoints": [ "." ],
+  "entryPointStrategy": "Packages",
+  "exclude": [
+    "packages/*/dist/**/*.ts"
+  ],
+  "plugin": [
+    "typedoc-plugin-missing-exports"
+  ]
+}
