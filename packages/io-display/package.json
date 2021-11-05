@@ -1,6 +1,6 @@
 {
   "name": "@cisl/io-display",
-  "version": "1.0.0-dev.2",
+  "version": "1.4.0",
   "description": "",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -16,7 +16,7 @@
   ],
   "scripts": {
     "build": "yarn clean && yarn compile",
-    "compile": "tsc -p tsconfig.build.json && node ../../utils/dist-transformer.js",
+    "compile": "tsc -p tsconfig.build.json && ts-node ../../utils/dist-transformer.js",
     "clean": "rimraf dist",
     "watch": "tsc -w",
     "prepublishOnly": "echo \"Do not run publish directly, run tsc-publish\" && exit 1",
@@ -37,7 +37,7 @@
     "@cisl/io": ">=1.0.0"
   },
   "devDependencies": {
-    "@types/lodash": "^4.4.6",
+    "@types/lodash.isempty": "^4.4.6",
     "@cisl/io": "^1.2.1"
   }
 }

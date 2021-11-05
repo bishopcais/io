@@ -14,9 +14,9 @@ interface Subscription extends amqplib.Replies.Consume {
   unsubscribe: () => void;
 }
 
-type ReplyCallback = (content: Error | RabbitContentType) => void;
-type RpcReplyCallback = (message: RabbitMessage, reply: ReplyCallback, awkFunc: (() => void) | undefined | Error, err?: Error | undefined) => void;
-type PublishCallback = (message: RabbitMessage, err: Error | undefined) => void;
+type ReplyCallback<T = RabbitContentType> = (content: Error | T) => void;
+type RpcReplyCallback<T> = (message: RabbitMessage<T>, reply: ReplyCallback, awkFunc: (() => void) | undefined | Error, err?: Error | undefined) => void;
+type PublishCallback<T> = (message: RabbitMessage<T>, err: Error | undefined) => void;
 type QueueCallback = (message: RabbitMessage, err?: Error | undefined) => void;
 
 interface QueueState {
@@ -71,7 +71,7 @@ export class Rabbit {
       }
     }
 
-    const connect_obj: ConnectOptions.Connect = {
+    const connectObj: ConnectOptions.Connect = {
       protocol: 'amqp',
       hostname: this.options.hostname,
       username: this.options.username,
@@ -80,38 +80,40 @@ export class Rabbit {
     };
 
     if (this.options.port) {
-      connect_obj.port = this.options.port;
+      connectObj.port = this.options.port;
     }
 
-    const connect_options: TLSSocketOptions = {};
+    const connectionOptions: TLSSocketOptions = {};
     if (this.options.tls === true || this.options.ssl === true) {
       if (!this.options.cert && !this.options.key && !this.options.ca) {
         throw new Error('Missing arguments for using SSL for RabbitMQ');
       }
 
-      connect_obj.protocol = 'amqps';
+      connectObj.protocol = 'amqps';
       if (this.options.cert) {
-        connect_options.cert = fs.readFileSync(this.options.cert);
+        connectionOptions.cert = fs.readFileSync(this.options.cert);
       }
       if (this.options.key) {
-        connect_options.key = fs.readFileSync(this.options.key);
+        connectionOptions.key = fs.readFileSync(this.options.key);
       }
       if (this.options.ca) {
-        connect_options.ca = [fs.readFileSync(this.options.ca)];
+        connectionOptions.ca = [fs.readFileSync(this.options.ca)];
       }
 
       if (this.options.passphrase) {
-        connect_options.passphrase = this.options.passphrase;
+        connectionOptions.passphrase = this.options.passphrase;
       }
     }
 
     this.conn = null;
-    const pconn = amqplib.connect(connect_obj, connect_options);
+    const pconn = amqplib.connect(connectObj, connectionOptions);
     pconn.then((conn) => {
       this.conn = conn;
+    }).catch(() => {
+      // pass
     });
     pconn.catch((err): void => {
-      console.error(`RabbitMQ error: ${err}`);
+      console.error(`RabbitMQ error: ${err as string}`);
       console.error(`Connection to the rabbitmq root vhost failed. Please make sure that your user ${this.options.username} can access the root vhost!`);
       process.exit(1);
     });
@@ -125,36 +127,32 @@ export class Rabbit {
     this.io = io;
   }
 
-  public close(): Promise<void> {
-    return new Promise((resolve) => {
-      if (!this.conn) {
-        return resolve();
-      }
-      this.conn.close().then(() => {
-        resolve();
-      });
-    });
+  public async close(): Promise<void> {
+    if (!this.conn) {
+      return;
+    }
+    await this.conn.close();
   }
 
-  private resolveTopicName(topic_name: string): string {
+  private resolveTopicName(topicName: string): string {
     if (this.prefix) {
-      topic_name = `${this.prefix}.${topic_name}`;
+      topicName = `${this.prefix}.${topicName}`;
     }
-    return topic_name;
+    return topicName;
   }
 
-  private parseContent(content: Buffer, content_type?: string): RabbitContentType {
-    let final_content: RabbitContentType = content;
-    if (content_type === 'application/json') {
-      final_content = JSON.parse(content.toString());
+  private parseContent(content: Buffer, contentType?: string): RabbitContentType {
+    let finalContent: RabbitContentType = content;
+    if (contentType === 'application/json') {
+      finalContent = JSON.parse(content.toString());
     }
-    else if (content_type === 'text/string') {
-      final_content = content.toString();
+    else if (contentType === 'text/string') {
+      finalContent = content.toString();
     }
-    else if (content_type === 'text/number') {
-      final_content = parseFloat(content.toString());
+    else if (contentType === 'text/number') {
+      finalContent = parseFloat(content.toString());
     }
-    return final_content;
+    return finalContent;
   }
 
   private getContentType(content: RabbitContentType): string {
@@ -177,17 +175,17 @@ export class Rabbit {
       return content;
     }
 
-    let string_content = '';
+    let stringContent = '';
     if (typeof content === 'string') {
-      string_content = content;
+      stringContent = content;
     }
     else if (typeof content === 'number') {
-      string_content = content.toString();
+      stringContent = content.toString();
     }
     else {
-      string_content = JSON.stringify(content);
+      stringContent = JSON.stringify(content);
     }
-    return Buffer.from(string_content);
+    return Buffer.from(stringContent);
   }
 
   /**
@@ -205,8 +203,8 @@ export class Rabbit {
     return channel.publish(this.exchange, topic, encodedContent, options);
   }
 
-  public async onTopic(topic: string, handler: PublishCallback): Promise<Replies.Consume>;
-  public async onTopic(topic: string, options: RabbitOnTopicOptions, handler: PublishCallback): Promise<Replies.Consume>;
+  public async onTopic<T = RabbitContentType>(topic: string, handler: PublishCallback<T>): Promise<Replies.Consume>;
+  public async onTopic<T = RabbitContentType>(topic: string, options: RabbitOnTopicOptions, handler: PublishCallback<T>): Promise<Replies.Consume>;
   /**
    * Subscribe to a topic.
    * @param  {string} topic - The topic to subscribe to. Should be of a form 'tag1.tag2...'. Supports wildcard.
@@ -216,23 +214,23 @@ export class Rabbit {
    * @return {Promise} A subscription object which can be used to unsubscribe by calling
    * promise.then(subscription=>subscription.unsubscribe())
    */
-  public onTopic(topic: string, options: RabbitOnTopicOptions|PublishCallback, handler?: PublishCallback): Promise<Replies.Consume> {
+  public onTopic<T = RabbitContentType>(topic: string, options: RabbitOnTopicOptions|PublishCallback<T>, handler?: PublishCallback<T>): Promise<Replies.Consume> {
     if (!handler && typeof options === 'function') {
-      return this._onTopic(topic, {}, options);
+      return this._onTopic<T>(topic, {}, options);
     }
     else if (handler) {
-      return this._onTopic(topic, options as RabbitOnTopicOptions, handler);
+      return this._onTopic<T>(topic, options as RabbitOnTopicOptions, handler);
     }
     throw new Error('Invalid type signature');
   }
 
-  private async _onTopic(topic: string, options: RabbitOnTopicOptions, handler: PublishCallback): Promise<Replies.Consume> {
+  private async _onTopic<T = RabbitContentType>(topic: string, options: RabbitOnTopicOptions, handler: PublishCallback<T>): Promise<Replies.Consume> {
     topic = this.resolveTopicName(topic);
 
-    const channel_options = {exclusive: true, autoDelete: true};
+    const channelOptions = {exclusive: true, autoDelete: true};
     const channel = await this.pch;
     await channel.checkExchange(this.exchange);
-    const queue = await channel.assertQueue('', channel_options);
+    const queue = await channel.assertQueue('', channelOptions);
     await channel.bindQueue(queue.queue, options.exchange || this.exchange, topic);
     return channel.consume(queue.queue, (msg): void => {
       if (msg !== null) {
@@ -243,7 +241,10 @@ export class Rabbit {
         catch (exc) {
           err = exc as Error;
         }
-        handler((msg as RabbitMessage), err);
+        handler({
+          ...msg,
+          content: msg.content as unknown as T,
+        }, err);
       }
     }, {noAck: true}).then((consume: amqplib.Replies.Consume): Subscription => {
       return Object.assign(
@@ -263,7 +264,7 @@ export class Rabbit {
    * If options.replyTo is defined, then the promise here will return void immediately after the call is dispatched. This function will also
    * not issue a timeout error under any conditions.
    */
-  public async publishRpc(queueName: string, content: RabbitContentType = Buffer.from(''), options: amqplib.Options.Publish = {}): Promise<RabbitMessage> {
+  public async publishRpc<T = RabbitContentType>(queueName: string, content: RabbitContentType = Buffer.from(''), options: amqplib.Options.Publish = {}): Promise<RabbitMessage<T>> {
     let consumerTag: string;
     const channel = await this.pch;
     const replyTo = options.replyTo;
@@ -287,27 +288,31 @@ export class Rabbit {
         if (typeof options.expiration === 'number') {
           timeoutId = setTimeout((): void => {
             if (consumerTag) {
-              channel.cancel(consumerTag);
+              void channel.cancel(consumerTag);
             }
             reject(new Error(`Request timed out after ${options.expiration} ms.`));
           }, options.expiration + 100);
         }
 
-        channel.consume((options.replyTo as string), async (msg) => {
+        channel.consume(options.replyTo, (msg) => {
           if (msg !== null) {
             if (msg.properties.correlationId === options.correlationId) {
               clearTimeout(timeoutId);
-              if (consumerTag) {
-                await channel.cancel(consumerTag);
-              }
-
-              if (msg.properties.headers.error) {
-                reject(new Error(msg.properties.headers.error));
-              }
-              else {
-                (msg as RabbitMessage).content = this.parseContent(msg.content, contentType || msg.properties.contentType);
-                resolve((msg as RabbitMessage));
-              }
+              const promise = consumerTag ? channel.cancel(consumerTag) as unknown as Promise<void> : Promise.resolve();
+              promise.then(() => {
+                if (msg.properties.headers.error) {
+                  reject(new Error(msg.properties.headers.error));
+                }
+                else {
+                  (msg as RabbitMessage).content = this.parseContent(msg.content, contentType || msg.properties.contentType);
+                  resolve({
+                    ...msg,
+                    content: msg.content as unknown as T,
+                  });
+                }
+              }).catch(() => {
+                // pass
+              });
             }
             else {
               reject(new Error('null response for call'));
@@ -315,6 +320,8 @@ export class Rabbit {
           }
         }, { noAck: true}).then((reply) => {
           consumerTag = reply.consumerTag;
+        }).catch(() => {
+          // pass
         });
       }
 
@@ -349,14 +356,14 @@ export class Rabbit {
     });
   }
 
-  public async onRpc(queueName: string, handler: RpcReplyCallback): Promise<void>;
-  public async onRpc(queueName: string, options: RabbitOnRpcOptions, handler: RpcReplyCallback): Promise<void>;
-  public onRpc(queueName: string, options: RabbitOnRpcOptions|RpcReplyCallback, handler?: RpcReplyCallback): Promise<void> {
+  public async onRpc<T>(queueName: string, handler: RpcReplyCallback<T>): Promise<void>;
+  public async onRpc<T>(queueName: string, options: RabbitOnRpcOptions, handler: RpcReplyCallback<T>): Promise<void>;
+  public onRpc<T>(queueName: string, options: RabbitOnRpcOptions|RpcReplyCallback<T>, handler?: RpcReplyCallback<T>): Promise<void> {
     if (!handler && typeof options === 'function') {
-      return this._onRpc(queueName, {}, options);
+      return this._onRpc<T>(queueName, {}, options);
     }
     else if (handler) {
-      return this._onRpc(queueName, options as RabbitOnRpcOptions, handler);
+      return this._onRpc<T>(queueName, options as RabbitOnRpcOptions, handler);
     }
     throw new Error('Invalid type signature');
   }
@@ -364,10 +371,10 @@ export class Rabbit {
   /**
    * Receive RPCs from a queue and handle them.
    */
-  public async _onRpc(queueName: string, options: RabbitOnRpcOptions, handler: RpcReplyCallback): Promise<void> {
+  public async _onRpc<T>(queueName: string, options: RabbitOnRpcOptions, handler: RpcReplyCallback<T>): Promise<void> {
     const channel = await this.pch;
     const noAck = handler.length < 3;
-    channel.prefetch(1);
+    await channel.prefetch(1);
     const queue = await channel.assertQueue(queueName, {exclusive: options.exclusive || true, autoDelete: true});
     await channel.consume(queue.queue, (msg: amqplib.ConsumeMessage | null) => {
       let replyCount = 0;
@@ -386,14 +393,14 @@ export class Rabbit {
               msg.properties.replyTo,
               Buffer.from(response.message),
               {
-                correlationId: msg.properties.correlationId,
+                correlationId: msg.properties.correlationId as string,
                 headers: { error: response.message },
               },
             );
           }
           else {
             const publishOptions: amqplib.Options.Publish = {
-              correlationId: msg.properties.correlationId,
+              correlationId: msg.properties.correlationId as string,
             };
             const encodedContent = this.encodeContent(response);
             publishOptions.contentType = options.contentType || this.getContentType(response);
@@ -405,19 +412,21 @@ export class Rabbit {
       const ackFunc = noAck ? undefined : (): void => {
         channel.ack(msg);
       };
-      let err;
+
+      let err = null;
       try {
-        (msg as RabbitMessage).content = this.parseContent(msg.content, options.contentType || msg.properties.contentType);
+        const handledMsg: RabbitMessage<T> = {
+          ...msg,
+          content: this.parseContent(msg.content, msg.properties.contentType) as T,
+        };
+        handler(handledMsg, reply, ackFunc, err);
       }
       catch (exc) {
         err = exc as Error;
-      }
-
-      if (ackFunc) {
-        handler((msg as RabbitMessage), reply, ackFunc, err);
-      }
-      else {
-        handler((msg as RabbitMessage), reply, err);
+        handler({
+          ...msg,
+          content: msg.content as unknown as T,
+        }, reply, null, err);
       }
     }, { noAck });
   }
@@ -450,7 +459,7 @@ export class Rabbit {
         err = exc as Error;
       }
       handler(msg, err);
-    }, {noAck: true});
+    }, {noAck: true}).catch(() => { /* pass */ });
   }
 
   /**
@@ -458,8 +467,7 @@ export class Rabbit {
    * @return {Promise}
    */
   public async getQueues(): Promise<QueueState[]> {
-    const req = await fetch(`${this.mgmturl}/queues/${this.vhost}?columns=state,name`);
-    const json = await req.json();
+    const json = await fetch(`${this.mgmturl}/queues/${this.vhost}?columns=state,name`).then((res) => res.json()) as QueueState[];
     return json;
   }
 
@@ -467,20 +475,20 @@ export class Rabbit {
    * Subscribe to queue creation events
    * @param  {queueEventCallback} handler - Callback to handle the event.
    */
-  public onQueueCreated(handler: (queue_name: string, properties: amqplib.MessageProperties) => void): void {
+  public onQueueCreated(handler: (queueName: string, properties: amqplib.MessageProperties) => void): void {
     this.onTopic('queue.created', {exchange: 'amq.rabbitmq.event'}, (message): void => {
       handler(message.properties.headers.name, message.properties);
-    });
+    }).catch(() => { /* pass */ });
   }
 
   /**
    * Subscribe to queue deletion events
    * @param  {queueEventCallback} handler - Callback to handle the event.
    */
-  public onQueueDeleted(handler: (queue_name: string, properties: amqplib.MessageProperties) => void): void {
+  public onQueueDeleted(handler: (queueName: string, properties: amqplib.MessageProperties) => void): void {
     this.onTopic('queue.deleted', {exchange: 'amq.rabbitmq.event'}, (message): void => {
       handler(message.properties.headers.name, message.properties);
-    });
+    }).catch(() => { /* pass */ });
   }
 }
 

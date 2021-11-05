@@ -1,13 +1,13 @@
 {
   "name": "@cisl/io-celio-transcript",
-  "version": "1.0.0",
+  "version": "1.4.0",
   "description": "Plugin for @cisl/io for interop with transcript-worker using legacy celio topics/queues",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "typedocMain": "src/index.ts",
   "scripts": {
     "build": "yarn clean && yarn compile",
-    "compile": "tsc -p tsconfig.build.json && node ../../utils/dist-transformer.js",
+    "compile": "tsc -p tsconfig.build.json && ts-node ../../utils/dist-transformer.js",
     "clean": "rimraf dist",
     "watch": "tsc -w",
     "prepublishOnly": "echo \"Do not run publish directly, run tsc-publish\" && exit 1",

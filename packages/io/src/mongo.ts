@@ -18,12 +18,12 @@ export class Mongo {
 
     this.options = io.config.get<MongoOptions>('mongo');
 
-    let conn_string = 'mongodb://';
-    conn_string += `${this.options.host}`;
-    conn_string += ':';
-    conn_string += `${this.options.port}`;
-    conn_string += '/';
-    conn_string += `${this.options.db}`;
+    let connString = 'mongodb://';
+    connString += `${this.options.host}`;
+    connString += ':';
+    connString += `${this.options.port}`;
+    connString += '/';
+    connString += `${this.options.db}`;
 
     this.mongoose = mongoose;
     const options: mongoose.ConnectionOptions = {
@@ -39,7 +39,7 @@ export class Mongo {
       options.pass = this.options.pass;
     }
 
-    this.mongoose.connect(conn_string, options);
+    this.mongoose.connect(connString, options).catch(() => { /* pass */ });
 
     this.mongoose.connection.on('error', (err): void => {
       console.error('MongoDB connection error.');

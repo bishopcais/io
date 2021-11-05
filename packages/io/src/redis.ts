@@ -28,7 +28,7 @@ export class Redis extends RedisClient {
     const keyChannel = `__keyspace@${this.options.db}__:${key}`;
 
     const subscriber = this.duplicate();
-    subscriber.subscribe(keyChannel);
+    subscriber.subscribe(keyChannel).catch(() => { /* pass */ });
     subscriber.on('message', (channel, event): void => {
       if (channel === keyChannel) {
         handler(event);

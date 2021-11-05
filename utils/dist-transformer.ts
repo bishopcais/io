@@ -1,5 +1,5 @@
-const fs = require('fs-extra');
-const path = require('path');
+import fs from 'fs-extra';
+import path from 'path';
 
 const tmpDir = path.join(__dirname, 'tmp');
 const baseDir = process.cwd();
@@ -12,7 +12,8 @@ try {
   fs.readdirSync(path.join(tmpDir, basename)).forEach((file) => {
     fs.moveSync(path.join(tmpDir, basename, file), path.join(baseDir, 'dist', file));
   });
-} finally {
+}
+finally {
   fs.removeSync(tmpDir);
 }
 

@@ -62,7 +62,7 @@ export class Config {
     this._config = Config.recursiveDefaults(this._config, defaults);
   }
 
-  private static recursiveDefaults(config: {[key: string]: unknown}, defaults: {[key: string]: unknown}) {
+  private static recursiveDefaults(config: {[key: string]: unknown}, defaults: {[key: string]: unknown}): {[key: string]: unknown} {
     for (const key in defaults) {
       if (!(key in config) || config[key] === true) {
         config[key] = defaults[key];

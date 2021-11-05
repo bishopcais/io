@@ -43,25 +43,6 @@ interface UniformGridOptions {
   windowName?: string;
 }
 
-interface CreateViewObjectOptions {
-  position: {
-    gridTop: number;
-    gridLeft: number;
-  };
-  width: number | string;
-  height: number | string;
-  nodeIntegration?: boolean;
-  cssText?: string;
-  uiDraggable?: boolean;
-  uiClosable?: boolean;
-  deviceEmulation?: {
-    scale: number;
-  };
-  windowName: string;
-  displayContextName: string;
-  displayName: string;
-}
-
 /*
   * @param {String} options.url
   * @param {Object|String} [options.position]
@@ -83,8 +64,12 @@ interface CloseReturn extends GenericObject {
 
 interface CreateViewObjectResponse extends ViewObjectOptions {
   message?: string;
-  status?: string;
-
+  status: string;
+  command: string;
+  viewId: string;
+  displayName: string;
+  windowName: string;
+  displayContextName: string;
 }
 
 /**
@@ -110,12 +95,12 @@ export class DisplayWindow {
     this.displayContext = options.displayContext;
   }
 
-  _postRequest(data: object): Promise<object> {
+  _postRequest<T = object>(data: object): Promise<T> {
     return this.io.rabbit.publishRpc(`rpc-display-${this.displayName}`, data).then((response: RabbitMessage) => {
       if (Buffer.isBuffer(response.content) || typeof response.content !== 'object') {
         throw new Error('invalid response content');
       }
-      return response.content as object;
+      return (response.content as unknown) as T;
     });
   }
 
@@ -257,14 +242,14 @@ export class DisplayWindow {
    * gets the cell size of the uniform content grid
    * @returns {{width : Number, height : Number }}
    */
-  async getUniformGridCellSize(): Promise<UniformGridCellSize> {
+  getUniformGridCellSize(): Promise<UniformGridCellSize> {
     const cmd = {
       command: 'uniform-grid-cell-size',
       options: {
         windowName: this.windowName,
       },
     };
-    return (await this._postRequest(cmd) as UniformGridCellSize);
+    return this._postRequest<UniformGridCellSize>(cmd);
   }
 
   /**
@@ -272,17 +257,17 @@ export class DisplayWindow {
    * label is row|col or custom cell name
    * js_css_style : http://www.w3schools.com/jsref/dom_obj_style.asp
    * @param {String} label
-   * @param {String} js_css_style - based on  http://www.w3schools.com/jsref/dom_obj_style.asp
+   * @param {String} style - based on  http://www.w3schools.com/jsref/dom_obj_style.asp
    * @param {Object} animation - based on W3 animation API
    * @returns {display_rpc_result}
    */
-  setCellStyle(label: string, js_css_style: string, animation?: object): Promise<object> {
+  setCellStyle(label: string, style: string, animation?: object): Promise<object> {
     const cmd = {
       command: 'cell-style',
       options: {
         windowName: this.windowName,
         label: label,
-        style: js_css_style,
+        style: style,
         animationOptions: animation,
       },
     };
@@ -292,15 +277,15 @@ export class DisplayWindow {
 
   /**
    * Sets the font size of the display window object
-   * @param {String} px_string - font size in pixels
+   * @param {String} fontSize - font size in pixels
    * @returns {display_rpc_result}
    */
-  setFontSize(px_string: string): Promise<object> {
+  setFontSize(fontSize: string): Promise<object> {
     const cmd = {
       command: 'set-displaywindow-font-size',
       options: {
         windowName: this.windowName,
-        fontSize: px_string,
+        fontSize,
       },
     };
     return this._postRequest(cmd);
@@ -351,7 +336,9 @@ export class DisplayWindow {
     (content as CloseReturn).viewObjects.forEach((v) => {
       const view = this.displayContext.getViewObject(v);
       if (view) {
-        view.close();
+        view.close().catch((err) => {
+          console.error(`Error closing ${view.viewId}`, err);
+        });
       }
     });
     return content;
@@ -402,7 +389,7 @@ export class DisplayWindow {
     if (Buffer.isBuffer(response.content) || typeof response.content !== 'object') {
       throw new Error('invalid response type');
     }
-    return response.content as object;
+    return response.content;
   }
 
   /**
@@ -431,19 +418,21 @@ export class DisplayWindow {
   * @param {Number} options.deviceEmulation.scale
   * @returns {ViewObject} View object
   */
-  async createViewObject(options: CreateViewObjectOptions): Promise<ViewObject> {
-    options.windowName = this.windowName;
-    options.displayContextName = this.displayContext.name;
-    options.displayName = this.displayName;
+  async createViewObject(options: ViewObjectOptions): Promise<ViewObject> {
     const cmd = {
       command: 'create-view-object',
-      options: options,
+      options: {
+        ...options,
+        windowName: this.windowName,
+        displayContextName: this.displayContext.name,
+        displayName: this.displayName,
+      },
     };
 
-    const content = (await this._postRequest(cmd) as CreateViewObjectResponse);
+    const content = await this._postRequest<CreateViewObjectResponse>(cmd);
     if (content.status === 'error') {
       throw new Error(`ViewObject not created: ${content.message}`);
     }
-    return new ViewObject(this.io, (content as ViewObjectOptions));
+    return new ViewObject(this.io, content);
   }
 }

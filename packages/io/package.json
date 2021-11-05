@@ -1,6 +1,6 @@
 {
   "name": "@cisl/io",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "A framework for building distributed applications",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -11,7 +11,7 @@
     "clean": "rimraf dist",
     "watch": "tsc -w",
     "prepublishOnly": "echo \"Do not run publish directly, run tsc-publish\" && exit 1",
-    "tsc-publish": "tsc-publish"
+    "tsc-publish": "publisher"
   },
   "engines": {
     "node": ">=8.0.0"

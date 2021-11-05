@@ -3,7 +3,8 @@ import { Io } from '@cisl/io/io';
 import { DisplayContextFactory } from './display-context-factory';
 import { DisplayContext } from './display-context';
 import { UniformGridCellSize } from './display-window';
-import { ViewObject } from './view-object';
+import { ViewObject, ViewObjectOptions } from './view-object';
+import { DisplayOptions } from './types';
 
 declare module '@cisl/io/io' {
   interface Io {
@@ -11,13 +12,9 @@ declare module '@cisl/io/io' {
   }
 }
 
-interface ContentGrid {
-  row: number;
-  col: number;
-  padding?: number;
-}
-
-interface DisplayUrlOptions {
+interface DisplayUrlOptions extends Pick<ViewObjectOptions, 'slide' | 'deviceEmulation'> {
+  left?: number;
+  top?: number;
   position?: {
     gridLeft: number;
     gridTop: number;
@@ -30,82 +27,112 @@ interface DisplayUrlOptions {
 }
 
 export class DisplayWorker {
-  io: Io;
+  private io: Io;
 
-  displayContextFactory: DisplayContextFactory;
+  public displayContextFactory: DisplayContextFactory;
 
-  displayContext?: DisplayContext;
+  public displayContext?: DisplayContext;
 
-  uniformGridCellSize?: UniformGridCellSize;
+  public uniformGridCellSize?: UniformGridCellSize;
 
-  constructor(io: Io) {
+  public uniformGridCellSizeByWindow: Map<string, UniformGridCellSize>;
+
+  public constructor(io: Io) {
     this.io = io;
     this.displayContextFactory = new DisplayContextFactory(io);
-    this.displayContext;
-    this.uniformGridCellSize;
+    this.uniformGridCellSizeByWindow = new Map();
   }
 
-  async openDisplayWorker(name: string, display: string, contentGrid?: ContentGrid): Promise<{displayContext: DisplayContext; uniformGridCellSize: UniformGridCellSize}> {
+  /**
+   *
+   * @param name The name of the display worker to communicate with
+   * @param display The name of the context within display worker to communicate with
+   */
+  public async openDisplayWorker(displayContextName: string, displayOptions: DisplayOptions): Promise<{displayContext: DisplayContext; uniformGridCellSize: UniformGridCellSize}> {
+    /*
     const windows = await this.displayContextFactory.getDisplays();
-    let bounds = windows.get(name);
-    if (bounds === undefined) {
-      bounds = {};
-    }
+    const bounds = windows.get(displayName) || {};
     bounds.contentGrid = contentGrid;
-    bounds.displayName = name;
-    this.displayContext = await this.displayContextFactory.create(display, {main: bounds});
-    const displayWindow = this.displayContext.getDisplayWindowSync(name);
-    await displayWindow.clearContents();
-    if (contentGrid) {
-      await displayWindow.createUniformGrid({
-        contentGrid,
-      });
+    bounds.displayName = displayName;
+    */
+
+    const displays = await this.displayContextFactory.getDisplays();
+    for (const windowName of Object.keys(displayOptions)) {
+      const display = displays.get(displayOptions[windowName].displayName);
+      if (display) {
+        displayOptions[windowName] = {
+          ...display,
+          ...displayOptions[windowName],
+        };
+      }
     }
-    const uniformGridCellSize = await displayWindow.getUniformGridCellSize();
-    this.uniformGridCellSize = uniformGridCellSize;
-    return {displayContext: this.displayContext, uniformGridCellSize: uniformGridCellSize};
+
+    this.displayContext = await this.displayContextFactory.create(displayContextName, displayOptions);
+    for (const windowName of Object.keys(displayOptions)) {
+      const displayWindow = this.displayContext.getDisplayWindow(windowName);
+      await displayWindow.clearContents();
+      if (displayOptions[windowName].contentGrid) {
+        await displayWindow.createUniformGrid({
+          contentGrid: displayOptions[windowName].contentGrid,
+        });
+      }
+      const uniformGridCellSize = await displayWindow.getUniformGridCellSize();
+      this.uniformGridCellSizeByWindow.set(windowName, uniformGridCellSize);
+      this.uniformGridCellSize = uniformGridCellSize;
+    }
+
+    return {displayContext: this.displayContext, uniformGridCellSize: this.uniformGridCellSize};
   }
 
-  async displayUrl(url: string, options: DisplayUrlOptions): Promise<ViewObject> {
+  public async displayUrl(url: string, options: DisplayUrlOptions): Promise<ViewObject>;
+  public async displayUrl(windowName: string, url: string, options: DisplayUrlOptions): Promise<ViewObject>;
+
+  public async displayUrl(
+    windowNameOrUrl: string,
+    urlOrOptions: string | DisplayUrlOptions,
+    options?: DisplayUrlOptions,
+  ): Promise<ViewObject> {
+    const windowName = options ? windowNameOrUrl : 'main';
+    const url: string = options ? urlOrOptions as string : windowNameOrUrl;
+    options = options || urlOrOptions as DisplayUrlOptions;
+    const uniformGridCellSize = this.uniformGridCellSizeByWindow.get(windowName);
+
     if (!this.displayContext) {
       throw new Error('Display context must be initialized');
     }
 
-    options = Object.assign(
-      {
+    if ((options.width === undefined || options.height === undefined) && uniformGridCellSize === undefined) {
+      throw new Error('Uniform grid cell size must be initialized');
+    }
+
+    if (options.width === undefined && options.widthFactor === undefined) {
+      throw new Error('width or widthFactor is required');
+    }
+    if (options.height === undefined && options.heightFactor === undefined) {
+      throw new Error('height or heightFactor is required');
+    }
+
+    return await this.displayContext.createViewObject({
+      nodeIntegration: false,
+      uiDraggable: true,
+      uiClosable: true,
+      ...(options.top === undefined && options.left === undefined ? {
         position: {
           gridLeft: 1,
           gridTop: 1,
         },
-        nodeintegration: false,
-        uiDraggable: true,
-        uiClosable: true,
-      },
-      options,
-    );
-
-    if (options.width === undefined) {
-      if (options.widthFactor === undefined) {
-        throw new Error('width or widthFactor is required');
-      }
-      if (this.uniformGridCellSize === undefined) {
-        throw new Error('uniformGridCellSize must be used if width is not passed');
-      }
-      options.width = `${options.widthFactor * this.uniformGridCellSize.width}px`;
-    }
-    if (options.height === undefined) {
-      if (options.heightFactor === undefined) {
-        throw new Error('height or heightFactor is required');
-      }
-      if (this.uniformGridCellSize === undefined) {
-        throw new Error('uniformGridCellSize must be used if height is not passed');
-      }
-      options.height = `${options.heightFactor * this.uniformGridCellSize.height}px`;
-    }
-    return await this.displayContext.createViewObject({
+      } : {}),
       ...options,
+      width:
+        options.width !== undefined
+          ? (typeof options.width === 'string' ? options.width : `${options.width}px`)
+          : `${options.widthFactor * uniformGridCellSize.width}px`,
+      height:
+        options.height !== undefined
+          ? (typeof options.height === 'string' ? options.height : `${options.height}px`)
+          : `${options.heightFactor * uniformGridCellSize.height}px`,
       url,
-    }, this.displayContext.name);
+    }, windowName);
   }
 }
 

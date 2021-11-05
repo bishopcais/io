@@ -21,10 +21,45 @@ export interface DeviceEmulationOptions {
 }
 
 export interface ViewObjectOptions {
+  url: string;
+  width: string;
+  height: string;
+  left?: number;
+  top?: number;
+  position?: {
+    gridLeft: number;
+    gridTop: number;
+  }
+  slide?: {
+    direction: 'left' | 'right' | 'down' | 'up';
+    cascade: boolean;
+  }
+  uiDraggable: boolean;
+  uiClosable: boolean;
+  nodeIntegration: boolean;
+  deviceEmulation?: {
+    screenPosition?: 'mobile' | 'desktop';
+    screenSize?: {
+      height: number;
+      width: number;
+    }
+    viewPosition?: {
+      x: number;
+      y: number;
+    }
+    deviceScaleFactor?: number;
+    viewSize?: {
+      height: number;
+      width: number;
+    }
+    scale: number;
+  }
+}
+
+export interface ViewObjectRequestResponse {
+  command: string;
+  status: string;
   viewId: string;
-  displayName: string;
-  displayContextName: string;
-  windowName: string;
 }
 
 /**
@@ -42,7 +77,7 @@ export class ViewObject {
 
   private displayContextName: string;
 
-  constructor(io: Io, options: ViewObjectOptions) {
+  constructor(io: Io, options: { viewId: string; displayName: string; displayContextName: string; windowName: string; }) {
     if (!io.rabbit) {
       throw new Error('Could not find RabbitMQ instance');
     }
@@ -53,13 +88,12 @@ export class ViewObject {
     this.windowName = options.windowName;
   }
 
-  _postRequest(data: object): Promise<object> {
-    return this.io.rabbit.publishRpc(`rpc-display-${this.displayName}`, data).then(response => {
-      if (typeof response.content !== 'object' || Buffer.isBuffer(response.content)) {
-        throw new Error('Invalid expected response');
-      }
-      return response.content as object;
-    });
+  private async _postRequest<T = any>(data: { command: string; options: { viewId: string; [key: string]: unknown }; }): Promise<T> {
+    const res = await this.io.rabbit.publishRpc(`rpc-display-${this.displayName}`, data);
+    if (typeof res.content !== 'object' || Buffer.isBuffer(res.content)) {
+      throw new Error('Invalid expected response');
+    }
+    return res.content as unknown as T;
   }
 
   /**
@@ -94,15 +128,14 @@ export class ViewObject {
 
   /**
    * sets the css style string
-   * @param {String} css_string
    * @returns {display_rpc_result}
    */
-  setCSSStyle(css_string: string): Promise<object> {
+  setCSSStyle(cssText: string): Promise<object> {
     const cmd = {
       command: 'set-webview-css-style',
       options: {
         viewId: this.viewId,
-        cssText: css_string,
+        cssText: cssText,
       },
     };
     return this._postRequest(cmd);
@@ -142,14 +175,14 @@ export class ViewObject {
    * reloads the view object
    * @returns {display_rpc_result}
    */
-  reload(): Promise<object> {
+  async reload(): Promise<ViewObjectRequestResponse> {
     const cmd = {
       command: 'reload',
       options: {
         viewId: this.viewId,
       },
     };
-    return this._postRequest(cmd);
+    return this._postRequest<ViewObjectRequestResponse>(cmd);
   }
 
   /**
@@ -209,7 +242,10 @@ export class ViewObject {
     options.viewId = this.viewId;
     const cmd = {
       command: 'set-bounds',
-      options: options,
+      options: {
+        ...options,
+        viewId: this.viewId,
+      },
     };
     return this._postRequest(cmd);
   }
@@ -316,7 +352,7 @@ export class ViewObject {
     return this._postRequest(cmd);
   }
 
-  _on(topic: string, handler: (response: RabbitMessage) => void): void {
+  private _on(topic: string, handler: (response: RabbitMessage) => void): void {
     this.io.rabbit.onTopic(topic, (response) => {
       if (Buffer.isBuffer(response.content) || typeof response.content !== 'object') {
         throw new Error('invalid response received');
@@ -324,7 +360,7 @@ export class ViewObject {
       if (handler != null && (response.content as ResponseContent).details.viewId == this.viewId) {
         handler(response);
       }
-    });
+    }).catch(() => { /* pass */ });
   }
 
   /**

@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.4.0
+
+* TODO
+
 ## v1.3.0
 
 * Bump amqplib to ^0.8.0

@@ -6,7 +6,10 @@
     "paths": {
       "@cisl/io/*": ["packages/io/src/*"],
       "@cisl/io": ["packages/io/src"],
+      "@cisl/io-display/*": ["packages/io-display/src/*"],
+      "@cisl/io-display": ["packages/io-display/src"],
     },
+    "esModuleInterop": true,
     "noEmit": true
   },
   "exclude": [

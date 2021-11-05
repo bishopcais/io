@@ -1,6 +1,6 @@
 {
   "name": "io",
-  "version": "1.0.0",
+  "version": "1.4.0",
   "main": "index.js",
   "license": "MIT",
   "private": true,
@@ -13,7 +13,8 @@
     "io-speaker:build": "yarn workspace @cisl/io-speaker build",
     "build": "yarn io:build && yarn io-celio-speaker:build && yarn io-celio-transcript:build && yarn io-display:build && yarn io-speaker:build",
     "lint": "eslint packages/*/src/**/*.ts packages/*/test/**/*.ts",
-    "test": "jest"
+    "test": "jest",
+    "postversion": "ts-node utils/version.ts"
   },
   "workspaces": {
     "packages": [
@@ -22,7 +23,7 @@
   },
   "dependencies": {
     "@masterodin/eslint-config-typescript": "^3.1.1",
-    "@masterodin/publisher": "^0.9.0",
+    "@masterodin/publisher": "^0.10.0",
     "@types/jest": "^26.0.4",
     "@types/node-fetch": "^2.5.7",
     "@typescript-eslint/eslint-plugin": "^4.31.2",
@@ -35,7 +36,10 @@
     "typescript": "^4.4.3"
   },
   "devDependencies": {
+    "@types/fs-extra": "^9.0.13",
+    "@types/node": "^12",
     "fs-extra": "^10.0.0",
-    "rimraf": "^3.0.2"
+    "rimraf": "^3.0.2",
+    "ts-node": "^10.2.1"
   }
 }

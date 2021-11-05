@@ -4,5 +4,9 @@
   ],
   "ignorePatterns": [
     "*.js"
-  ]
+  ],
+  "rules": {
+    "@typescript-eslint/ban-types": "warn",
+    "@typescript-eslint/explicit-member-accessibility": "off"
+  }
 }

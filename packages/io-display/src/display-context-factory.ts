@@ -2,7 +2,7 @@ import { DisplayContext } from './display-context';
 import { Io } from '@cisl/io/io';
 import { RabbitMessage } from '@cisl/io/types';
 
-import { Bounds } from './types';
+import { BaseResponse, Bounds } from './types';
 
 interface BoundsResponse {
   displayName: string;
@@ -105,6 +105,11 @@ interface BoundsResponse {
  * @param {String} displayName
  */
 
+interface FocusWindowResponse extends BaseResponse {
+  windowName: string;
+  displayContext: string;
+}
+
 /**
  * Class representing the DisplayContextFactory object.
  */
@@ -155,32 +160,30 @@ export class DisplayContextFactory {
   * list display contexts live in the environment.
   * @returns {Promise} An array of String containing display context names.
   */
-  list() {
-    return this.io.rabbit.getQueues().then(qs => {
-      const availableDisplayNames: string[] = [];
-      qs.forEach(queue => {
-        if ((queue.state === 'running' || queue.state === 'live') && queue.name.indexOf('rpc-display-') > -1) {
-          availableDisplayNames.push(queue.name);
-        }
-      });
-      // get existing context state from display workers
-      const cmd = {
-        command: 'get-context-list',
-      };
-      const _ps: any[] = [];
-      availableDisplayNames.forEach(dm => {
-        _ps.push(this.io.rabbit.publishRpc(dm, cmd).then(response => {
-          return response.content;
-        }));
-      });
-      return Promise.all(_ps);
-    }).then(lists => {
-      let contextList = [];
-      for (let x = 0; x < lists.length; x++) {
-        contextList = contextList.concat(lists[x]);
+  async list(): Promise<string[]> {
+    const qs = await this.io.rabbit.getQueues();
+    const availableDisplayNames: string[] = [];
+    qs.forEach(queue => {
+      if ((queue.state === 'running' || queue.state === 'live') && queue.name.indexOf('rpc-display-') > -1) {
+        availableDisplayNames.push(queue.name);
       }
-      return [...new Set(contextList)];
     });
+    // get existing context state from display workers
+    const cmd = {
+      command: 'get-context-list',
+    };
+    const _ps: Promise<string[]>[] = [];
+    availableDisplayNames.forEach(dm => {
+      _ps.push(this.io.rabbit.publishRpc<string[]>(dm, cmd).then(response => {
+        return response.content;
+      }));
+    });
+    const lists = await Promise.all(_ps);
+    let contextList: string[] = [];
+    for (let x = 0; x < lists.length; x++) {
+      contextList = contextList.concat(lists[x]);
+    }
+    return [...new Set(contextList)];
   }
 
   /**
@@ -205,25 +208,24 @@ export class DisplayContextFactory {
   * @param reset=false if the viewObjects of the displayContext need to be reloaded.
   * @returns return false if the display context name is already active.
   */
-  async setActive(display_ctx_name: string, reset = false): Promise<string | boolean> {
+  async setActive(displayContextName: string, reset = false): Promise<string | false> {
     // since setState first gets old value and sets the new value at the sametime,
     // calling this function within multiple display workers ensures this function is executed only once.
-    const name = await this.io.redis.getset('display:activeDisplayContext', display_ctx_name);
-    if (name !== display_ctx_name) {
-      const m = await (new DisplayContext(this.io, display_ctx_name, {})).restoreFromDisplayWorkerStates(reset);
+    const name = await this.io.redis.getset('display:activeDisplayContext', displayContextName);
+    if (name !== displayContextName) {
+      const m = await (new DisplayContext(this.io, displayContextName, {})).restoreFromDisplayWorkerStates(reset);
       this.io.rabbit.publishTopic('display.displayContext.changed', {
-        'type': 'displayContextChanged',
-        'details': {
-          'displayContext': display_ctx_name,
-          'lastDisplayContext': name,
+        type: 'displayContextChanged',
+        details: {
+          displayContext: displayContextName,
+          lastDisplayContext: name,
         },
-      });
+      }).catch(() => { /* pass */ });
       return m;
     }
 
     // return false when the context is already active
     return false;
-
   }
 
   /**
@@ -278,15 +280,16 @@ export class DisplayContextFactory {
   }
 }
   */
-  async create(display_ctx_name: string, window_settings = {}): Promise<DisplayContext> {
-    const _dc = new DisplayContext(this.io, display_ctx_name, window_settings);
+  async create(displayContextName: string, windowSettings = {}): Promise<DisplayContext> {
+    const _dc = new DisplayContext(this.io, displayContextName, windowSettings);
     await _dc.restoreFromDisplayWorkerStates();
-    this.io.rabbit.publishTopic('display.displayContext.created', {
+    await this.io.rabbit.publishTopic('display.displayContext.created', {
       type: 'displayContextCreated',
       details: {
-        displayContext: display_ctx_name,
+        displayContext: displayContextName,
       },
     });
+
     return _dc;
   }
 
@@ -294,7 +297,7 @@ export class DisplayContextFactory {
   * hides all display contexts. If the display context already exists, it is made active and a DisplayContext Object is restored from store.
   * @returns {Promise<Object>} A array of JSON object containing status of hide function execution at all display workers.
   */
-  async hideAll() {
+  async hideAll(): Promise<any> {
     const cmd = {
       command: 'hide-all-windows',
     };
@@ -304,7 +307,7 @@ export class DisplayContextFactory {
       _ps.push(this.io.rabbit.publishRpc(`rpc-display-${k}`, cmd).then(m => m.content));
     }
     const m = await Promise.all(_ps);
-    this.io.redis.del('display:activeDisplayContext');
+    void this.io.redis.del('display:activeDisplayContext');
     return m;
   }
 
@@ -313,43 +316,43 @@ export class DisplayContextFactory {
    * @param {string} [displayName=main] - Display Name.
    * @returns {Promise.<focus_window>} - A JSON object with window details.
    */
-  getFocusedWindow(displayName = 'main') {
+  async getFocusedWindow(displayName = 'main'): Promise<FocusWindowResponse> {
     const cmd = {
       command: 'get-focus-window',
     };
-    return this.io.rabbit.publishRpc(`rpc-display-${displayName}`, cmd).then(m => m.content);
+    const resp = await this.io.rabbit.publishRpc<FocusWindowResponse>(`rpc-display-${displayName}`, cmd);
+    return resp.content;
   }
 
   /**
    * gets the details of the focused window from all displays.
    * @returns {Promise.<Array.<focus_window>>} - An array of JSON object with window details.
    */
-  getFocusedWindows() {
+  async getFocusedWindows(): Promise<FocusWindowResponse[]> {
     const cmd = {
       command: 'get-focus-window',
     };
-    return this.getDisplays().then(m => {
-      const _ps: Promise<any>[] = [];
-      for (const [k] of m) {
-        _ps.push(this.io.rabbit.publishRpc(`rpc-display-${k}`, cmd).then(m => m.content));
-      }
-      return Promise.all(_ps);
-    });
+    const displays = await this.getDisplays();
+    const _ps: Promise<FocusWindowResponse>[] = [];
+    for (const [k] of displays) {
+      _ps.push(this.io.rabbit.publishRpc<FocusWindowResponse>(`rpc-display-${k}`, cmd).then(m => m.content));
+    }
+    return Promise.all(_ps);
   }
 
-  _on(topic: string, handler: (content: Buffer | string | number | object, response: RabbitMessage) => void): void {
+  private _on(topic: string, handler: (content: Buffer | string | number | object, response: RabbitMessage) => void): void {
     this.io.rabbit.onTopic(topic, (response) => {
       if (handler != null) {
         handler((response.content as Buffer | string | number), response);
       }
-    });
+    }).catch(() => { /* pass */ });
   }
 
   /**
    * viewObject created event
    * @param {viewObjectCreatedEventCallback} handler
    */
-  onViewObjectCreated(handler) {
+  onViewObjectCreated(handler): void {
     this._on('display.*.viewObjectCreated.*', handler);
   }
 
@@ -357,7 +360,7 @@ export class DisplayContextFactory {
    * viewObject hidden event
    * @param {viewObjectBasicEventCallback} handler
    */
-  onViewObjectHidden(handler) {
+  onViewObjectHidden(handler): void {
     this._on('display.*.viewObjectHidden.*', handler);
   }
 
@@ -365,7 +368,7 @@ export class DisplayContextFactory {
    * viewObject became visible event
    * @param {viewObjectBasicEventCallback} handler
    */
-  onViewObjectShown(handler) {
+  onViewObjectShown(handler): void {
     this._on('display.*.viewObjectShown.*', handler);
   }
 
@@ -373,7 +376,7 @@ export class DisplayContextFactory {
    * viewObject closed event
    * @param {viewObjectBasicEventCallback} handler
    */
-  onViewObjectClosed(handler) {
+  onViewObjectClosed(handler): void {
     this._on('display.*.viewObjectClosed.*', handler);
   }
 
@@ -381,7 +384,7 @@ export class DisplayContextFactory {
    * viewObject bounds changed event
    * @param {viewObjectBoundsEventCallback} handler
    */
-  onViewObjectBoundsChanged(handler) {
+  onViewObjectBoundsChanged(handler): void {
     this._on('display.*.viewObjectBoundsChanged.*', handler);
   }
 
@@ -389,7 +392,7 @@ export class DisplayContextFactory {
    * viewObject URL changed event
    * @param {viewObjectURLEventCallback} handler
    */
-  onViewObjectUrlChanged(handler) {
+  onViewObjectUrlChanged(handler): void {
     this._on('display.*.viewObjectUrlChanged.*', handler);
   }
 
@@ -397,7 +400,7 @@ export class DisplayContextFactory {
    * viewObject URL reloaded event
    * @param {viewObjectURLEventCallback} handler
    */
-  onViewObjectUrlReloaded(handler) {
+  onViewObjectUrlReloaded(handler): void {
     this._on('display.*.viewObjectUrlChanged.*', handler);
   }
 
@@ -405,7 +408,7 @@ export class DisplayContextFactory {
    * viewObject crashed event
    * @param {viewObjectBasicEventCallback} handler
    */
-  onViewObjectCrashed(handler) {
+  onViewObjectCrashed(handler): void {
     this._on('display.*.viewObjectCrashed.*', handler);
   }
 
@@ -413,7 +416,7 @@ export class DisplayContextFactory {
    * viewObject GPU crashed event
    * @param {viewObjectBasicEventCallback} handler
    */
-  onViewObjectGPUCrashed(handler) {
+  onViewObjectGPUCrashed(handler): void {
     this._on('display.*.viewObjectGPUCrashed.*', handler);
   }
 
@@ -421,7 +424,7 @@ export class DisplayContextFactory {
    * viewObject plugin crashed event
    * @param {viewObjectBasicEventCallback} handler
    */
-  onViewObjectPluginCrashed(handler) {
+  onViewObjectPluginCrashed(handler): void {
     this._on('display.*.viewObjectPluginCrashed.*', handler);
   }
 
@@ -429,7 +432,7 @@ export class DisplayContextFactory {
    * DisplayContext created event
    * @param {displayContextCreatedEventCallback} handler
    */
-  onDisplayContextCreated(handler) {
+  onDisplayContextCreated(handler): void {
     this._on('display.displayContext.created', handler);
   }
 
@@ -437,7 +440,7 @@ export class DisplayContextFactory {
    * DisplayContext changed event
    * @param {displayContextChangedEventCallback} handler
    */
-  onDisplayContextChanged(handler) {
+  onDisplayContextChanged(handler): void {
     this._on('display.displayContext.changed', handler);
   }
 
@@ -445,7 +448,7 @@ export class DisplayContextFactory {
    * DisplayContext closed event
    * @param {displayContextClosedEventCallback} handler
    */
-  onDisplayContextClosed(handler) {
+  onDisplayContextClosed(handler): void {
     this._on('display.displayContext.closed', handler);
   }
 
@@ -453,7 +456,7 @@ export class DisplayContextFactory {
    * Display worker removed event. Use <displayContextInstance>.onDisplayWorkerQuit instead if you want to listen to displayworker unexpected quit event.
    * @param {displayEventCallback} handler
    */
-  onDisplayWorkerRemoved(handler) {
+  onDisplayWorkerRemoved(handler): void {
     this._on('display.removed', handler);
   }
 
@@ -461,7 +464,7 @@ export class DisplayContextFactory {
    * Display worker added event
    * @param {displayEventCallback} handler
    */
-  onDisplayWorkerAdded(handler) {
+  onDisplayWorkerAdded(handler): void {
     this._on('display.added', handler);
   }
 }
