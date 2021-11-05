@@ -1,4 +1,4 @@
-import { Cog, CogLoaderOptions } from '@cisl/cog-loader';
+import { Cog } from '@cisl/cog-loader';
 import { Message, Options } from 'amqplib';
 
 import { RedisOptions } from 'ioredis';
@@ -11,9 +11,6 @@ export interface MongoOptions {
   user?: string;
   pass?: string;
 }
-
-// eslint-disable-next-line
-export interface IoOptions extends CogLoaderOptions {}
 
 export interface IoCog extends Cog {
   mq?: boolean | RabbitOptions;
@@ -31,7 +28,7 @@ export interface RabbitMessage<T = RabbitContentType> extends Omit<Message, 'con
   content: T;
 }
 
-interface RabbitBaseOnOptions {
+export interface RabbitBaseOnOptions {
   contentType?: string;
 }
 

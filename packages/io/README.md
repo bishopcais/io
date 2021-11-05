@@ -55,14 +55,21 @@ RabbitMQ requires the `rabbit` value to be set, where `true` will use the defaul
     "username": "guest",
     "password": "guest",
     "exchange": "amq.topic",
-    "ca": null
+    "vhost": "/"
   }
 }
 ```
-This configuration object has username and password in it, so please don't share it with others and don't commit it to your
-repository. Your applications can only communicate with each other if they use the same configuration.
 
-You can access the RabbitMQ CelIO object by using `io.rabbit`.
+If you wish to enable SSL to communicate with RabbitMQ, you will need to set `rabbit.ssl` to `true`, and then define the following keys
+to point at filenames to read in:
+
+* cert
+* key
+* ca
+
+And optionally define a `passphrase` to use for the key file.
+
+You can access the RabbitMQ object by using `io.rabbit`.
 
 #### Usage
 

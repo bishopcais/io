@@ -1,6 +1,6 @@
 import cislio from '@cisl/io';
 import { Io } from '@cisl/io/io';
-import Rabbit from '@cisl/io/rabbit';
+import { Rabbit } from '@cisl/io/rabbit';
 import { RabbitMessage } from '@cisl/io/types';
 
 declare module '@cisl/io/io' {
@@ -44,7 +44,7 @@ export class Speaker {
    * Clear the speaker-worker cache
    */
   public clearCache(): void {
-    this.rabbit.publishTopic('speaker.command.cache.clear', '');
+    this.rabbit.publishTopic('speaker.command.cache.clear', '').catch(() => { /* pass */ });
   }
 
   /**
@@ -52,7 +52,7 @@ export class Speaker {
    * @param {number} [change] - The change percentage amount.
    */
   public changeVolume(change: number): void {
-    this.rabbit.publishTopic('speaker.command.volume.change', { change });
+    this.rabbit.publishTopic('speaker.command.volume.change', { change }).catch(() => { /* pass */ });
   }
 
   /**
@@ -80,11 +80,11 @@ export class Speaker {
   }
 
   public beginSpeak(msg: Record<string, unknown>): void {
-    this.rabbit.publishTopic('speaker.speak.begin', msg);
+    this.rabbit.publishTopic('speaker.speak.begin', msg).catch(() => { /* pass */ });
   }
 
   public endSpeak(msg: Record<string, unknown>): void {
-    this.rabbit.publishTopic('speaker.speak.end', msg);
+    this.rabbit.publishTopic('speaker.speak.end', msg).catch(() => { /* pass */ });
   }
 
   /**
@@ -94,7 +94,7 @@ export class Speaker {
   public onBeginSpeak(handler: SpeakSubscriptionCallback): void {
     this.rabbit.onTopic('speaker.speak.begin', (message): void => {
       handler(message);
-    });
+    }).catch(() => { /* pass */ });
   }
 
   /**
@@ -104,7 +104,7 @@ export class Speaker {
   public onEndSpeak(handler: SpeakSubscriptionCallback): void {
     this.rabbit.onTopic('speaker.speak.end', (message): void => {
       handler(message);
-    });
+    }).catch(() => { /* pass */ });
   }
 }
 

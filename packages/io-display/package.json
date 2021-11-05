@@ -18,6 +18,7 @@
     "build": "yarn clean && yarn compile",
     "compile": "tsc -p tsconfig.build.json && ts-node ../../utils/dist-transformer.ts",
     "clean": "rimraf dist",
+    "docs": "typedoc",
     "watch": "tsc -w",
     "prepublishOnly": "echo \"Do not run publish directly, run tsc-publish\" && exit 1",
     "tsc-publish": "tsc-publish"

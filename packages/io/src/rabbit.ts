@@ -3,31 +3,34 @@ import fetch from 'node-fetch';
 import amqplib, { Replies } from 'amqplib';
 import { Options as ConnectOptions } from 'amqplib/properties';
 
-import Io from './io';
+import { Io } from './io';
 import { TLSSocketOptions } from 'tls';
 
 import { RabbitMessage, RabbitOptions, RabbitOnTopicOptions, RabbitOnRpcOptions, RabbitOnQueueOptions, RabbitContentType } from './types';
 
 import type Bluebird from 'bluebird';
 
-interface Subscription extends amqplib.Replies.Consume {
+export interface Subscription extends amqplib.Replies.Consume {
   unsubscribe: () => void;
 }
 
-type ReplyCallback<T = RabbitContentType> = (content: Error | T) => void;
-type RpcReplyCallback<T> = (message: RabbitMessage<T>, reply: ReplyCallback, awkFunc: (() => void) | undefined | Error, err?: Error | undefined) => void;
-type PublishCallback<T> = (message: RabbitMessage<T>, err: Error | undefined) => void;
-type QueueCallback = (message: RabbitMessage, err?: Error | undefined) => void;
+export type ReplyCallback<T = RabbitContentType> = (content: Error | T) => void;
+export type RpcReplyCallback<T> = (message: RabbitMessage<T>, reply: ReplyCallback, awkFunc: (() => void) | undefined | Error, err?: Error | undefined) => void;
+export type PublishCallback<T> = (message: RabbitMessage<T>, err: Error | undefined) => void;
+export type QueueCallback = (message: RabbitMessage, err?: Error | undefined) => void;
 
-interface QueueState {
+export interface QueueState {
   name: string;
   state: string;
 }
 
 /**
- * Class representing the RabbitManager object.
+ * Class representing the Rabbit module
  */
 export class Rabbit {
+  /**
+   * Options that RabbitMQ connection was instantiated with.
+   */
   public options: RabbitOptions;
 
   private conn: amqplib.Connection | null;
@@ -46,6 +49,32 @@ export class Rabbit {
 
   private timeout = 3000;
 
+  /**
+   * Rabbit constructor.
+   *
+   * This will be automatically called as part of the Io constructor if rabbit is enabled.
+   * The following options may be configured for Rabbit, as defined within the cog.json. The
+   * default values are shown below:
+   *
+   * ```json
+   * {
+   *   "url": "localhost",
+   *   "username": "guest",
+   *   "password": "guest",
+   *   "exchange": "amq.topic",
+   *   "vhost": "/",
+   * }
+   * ```
+   *
+   * If you wish to enable SSL for communication, you will need to set `ssl` to true, and then point
+   * the following keys at the appropriate file paths:
+   *
+   * * ca
+   * * cert
+   * * key
+   *
+   * and optionally define a `passphrase` for the key file.
+   */
   public constructor(io: Io) {
     io.config.defaults({
       rabbit: {
@@ -129,10 +158,21 @@ export class Rabbit {
     this.io = io;
   }
 
+  /**
+   * Set the timeout in ms to use for the {@link publishRpc} method.
+   *
+   * The default is 3000ms, which should be sufficient for most cases.
+   *
+   * @param timeout The new timeout in ms
+   */
   public setTimeout(timeout: number): void {
     this.timeout = timeout;
   }
 
+  /**
+   * Close the RabbitMQ connection. The connection is closed automatically when the Io instance
+   * is destroyed.
+   */
   public async close(): Promise<void> {
     if (!this.conn) {
       return;
@@ -195,11 +235,22 @@ export class Rabbit {
   }
 
   /**
-   * Publish a message to the specified topic.
-   * @param  {string} topic - The routing key for the message.
-   * @param  {Buffer | String} content - The message to publish.
-   * @param  {Object} [options] - Publishing options. Leaving it undefined is fine.
-   * @return {void}
+   * Publish a message to a [RabbitMQ topic](https://www.rabbitmq.com/tutorials/tutorial-five-javascript.html).
+   *
+   * This method allows for passing content to the specified topic. The content can be a string, number, object, or buffer,
+   * and in the case of the first three, will be implicitly converted to a buffer before sending to RabbitMQ. In these cases,
+   * the content type will be automatically determined based on type and set as follows:
+   *
+   * * `Buffer` - `application/octet-stream`
+   * * `number` - `text/number`
+   * * `string` - `text/string`
+   * * `object` - `application/json`
+   *
+   * If you wish to override the content type, you can pass `options.contentType` to the method.
+   *
+   * @param  topic - The routing key for the message.
+   * @param  content - The message to publish. If left blank, will default to an empty buffer.
+   * @param  options - Publishing options. See [amqplib#publish](https://www.squaremobius.net/amqp.node/channel_api.html#channelpublish) for details on options.
    */
   public async publishTopic(topic: string, content: RabbitContentType = Buffer.from(''), options: amqplib.Options.Publish = {}): Promise<boolean> {
     const encodedContent = this.encodeContent(content);
@@ -212,13 +263,17 @@ export class Rabbit {
   public async onTopic<T = RabbitContentType>(topic: string, handler: PublishCallback<T>): Promise<Replies.Consume>;
   public async onTopic<T = RabbitContentType>(topic: string, options: RabbitOnTopicOptions, handler: PublishCallback<T>): Promise<Replies.Consume>;
   /**
-   * Subscribe to a topic.
-   * @param  {string} topic - The topic to subscribe to. Should be of a form 'tag1.tag2...'. Supports wildcard.
-   * For more information, refer to the [Rabbitmq tutorial](https://www.rabbitmq.com/tutorials/tutorial-five-javascript.html).
-   * @param {subscriptionCallback} handler - The callback function to process the messages from the topic.
-   * @param {object} options options to use for the channel
-   * @return {Promise} A subscription object which can be used to unsubscribe by calling
-   * promise.then(subscription=>subscription.unsubscribe())
+   * Subscribe to a [RabbitMQ topic](https://www.rabbitmq.com/tutorials/tutorial-five-javascript.html).
+   *
+   * For each method that is recieved for a topic, the callback will be called with the RabbitMQ message. On receiving the message,
+   * the `content` property will be automatically converted to an appropriate type based on the content type of the message. The content type
+   * to be used can be overriden by setting the `options.contentType` field. You should only need to set the content type if interfacing
+   * with the legacy `@cisl/io` package.
+   *
+   * @template T - The expected type of the content is in the message. If not specified, defaults to `string | numer | object | Buffer`.
+   * @param topic - The routing key for the message.
+   * @param options - The options to use. You can use this to specify a non-default exchange to listen to, as well as contentType to expect.
+   * @param handler
    */
   public onTopic<T = RabbitContentType>(topic: string, options: RabbitOnTopicOptions|PublishCallback<T>, handler?: PublishCallback<T>): Promise<Replies.Consume> {
     if (!handler && typeof options === 'function') {
@@ -265,10 +320,16 @@ export class Rabbit {
   }
 
   /**
-   * Make remote procedural call (RPC).
+   * Make a [RabbitMQ remote procedural call (RPC)](https://www.rabbitmq.com/tutorials/tutorial-six-javascript.html).
    *
-   * If options.replyTo is defined, then the promise here will return void immediately after the call is dispatched. This function will also
-   * not issue a timeout error under any conditions.
+   * The promise returned by this method is resolved when the response is received from the callee. The response will be
+   * automatically parsed to the appropriate type based on the content type. You can override this behavior by setting
+   * options.contentType. You may leave both content and options blank.
+   *
+   * @template T - The type of the content of the response. Defaults to `string | number | object | Buffer`.
+   * @param queueName - The name of the queue to use for the RPC.
+   * @param content - The content to send to the callee. If left blank, will default to an empty buffer.
+   * @param options - The options to use.
    */
   public async publishRpc<T = RabbitContentType>(queueName: string, content: RabbitContentType = Buffer.from(''), options: amqplib.Options.Publish = {}): Promise<RabbitMessage<T>> {
     let consumerTag: string;
@@ -364,6 +425,18 @@ export class Rabbit {
 
   public async onRpc<T>(queueName: string, handler: RpcReplyCallback<T>): Promise<void>;
   public async onRpc<T>(queueName: string, options: RabbitOnRpcOptions, handler: RpcReplyCallback<T>): Promise<void>;
+  /**
+   * Listen for [RabbitMQ remote procedure calls (RPC)](https://www.rabbitmq.com/tutorials/tutorial-six-javascript.html).
+   *
+   * When a message is received on the given queue, the handler will be called with the message. The content of the message
+   * is automatically parsed to the appropriate type based on the content type. You can override this behavior by setting the
+   * `options.contentType` setting.
+   *
+   * @template T - The type of the content of the response. Defaults to `string | number | object | Buffer`.
+   * @param queueName - The name of the queue to use for the RPC.
+   * @param options - The options to use.
+   * @param handler - The handler to use.
+   */
   public onRpc<T>(queueName: string, options: RabbitOnRpcOptions|RpcReplyCallback<T>, handler?: RpcReplyCallback<T>): Promise<void> {
     if (!handler && typeof options === 'function') {
       return this._onRpc<T>(queueName, {}, options);
@@ -374,10 +447,7 @@ export class Rabbit {
     throw new Error('Invalid type signature');
   }
 
-  /**
-   * Receive RPCs from a queue and handle them.
-   */
-  public async _onRpc<T>(queueName: string, options: RabbitOnRpcOptions, handler: RpcReplyCallback<T>): Promise<void> {
+  private async _onRpc<T>(queueName: string, options: RabbitOnRpcOptions, handler: RpcReplyCallback<T>): Promise<void> {
     const channel = await this.pch;
     const noAck = handler.length < 3;
     await channel.prefetch(1);
@@ -439,6 +509,19 @@ export class Rabbit {
 
   public onQueue(queueName: string, handler: QueueCallback): Promise<void>;
   public onQueue(queueName: string, options: RabbitOnQueueOptions, handler: QueueCallback): Promise<void>;
+  /**
+   * Listen to a [RabbitMQ queue](https://www.rabbitmq.com/tutorials/tutorial-one-javascript.html).
+   *
+   * When a message is received on the given queue, the handler will be called with the message. The content of the message
+   * is automatically parsed to the appropriate type based on the content type. You can override this behavior by setting the
+   * `options.contentType` setting.
+   *
+   * The full allowed properties for options can be viwed at [amqplib#assertQueue](https://www.squaremobius.net/amqp.node/channel_api.html#channel_assertQueue).
+   *
+   * @param queueName - Queue name to listen to.
+   * @param options - Options to use.
+   * @param handler - Handler to use.
+   */
   public onQueue(queueName: string, options: RabbitOnQueueOptions|QueueCallback, handler?: QueueCallback): Promise<void> {
     if (!handler && typeof options === 'function') {
       return this._onQueue(queueName, {}, options);
@@ -449,7 +532,7 @@ export class Rabbit {
     throw new Error('Invalid type signature');
   }
 
-  public async _onQueue(queueName: string, options: RabbitOnQueueOptions, handler: QueueCallback): Promise<void> {
+  private async _onQueue(queueName: string, options: RabbitOnQueueOptions, handler: QueueCallback): Promise<void> {
     const channel = await this.pch;
     options.durable = options.durable || false;
     await channel.assertQueue(queueName, options);
@@ -497,5 +580,3 @@ export class Rabbit {
     }).catch(() => { /* pass */ });
   }
 }
-
-export default Rabbit;

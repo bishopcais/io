@@ -1,5 +1,5 @@
 import { Io } from '@cisl/io/io';
-import Rabbit from '@cisl/io/rabbit';
+import { Rabbit } from '@cisl/io/rabbit';
 import { RabbitMessage } from '@cisl/io/types';
 
 
@@ -12,7 +12,8 @@ declare module '@cisl/io/io' {
 type SpeakSubscriptionCallback = (message: RabbitMessage) => void;
 
 export class Speaker {
-  public max_speaker_duration: number = 1000 * 20; // 20 seconds;
+  // Default of 20 seconds
+  public maxSpeakerDuration: number = 1000 * 20;
 
   public rabbit: Rabbit;
 
@@ -36,7 +37,7 @@ export class Speaker {
    */
   public speak(text: string, options: {duration?: number, voice?: string} = {}): Promise<RabbitMessage> {
     if (!options.duration) {
-      options.duration = this.max_speaker_duration;
+      options.duration = this.maxSpeakerDuration;
     }
 
     return this.rabbit.publishRpc('rpc-speaker-speakText', Object.assign({}, options, {text}), { expiration: options.duration });
@@ -75,11 +76,11 @@ export class Speaker {
   }
 
   public beginSpeak(msg: Record<string, unknown>): void {
-    this.rabbit.publishTopic('begin.speak', msg);
+    this.rabbit.publishTopic('begin.speak', msg).catch(() => { /* pass */ });
   }
 
   public endSpeak(msg: Record<string, unknown>): void {
-    this.rabbit.publishTopic('end.speak', msg);
+    this.rabbit.publishTopic('end.speak', msg).catch(() => { /* pass */ });
   }
 
   /**
@@ -89,7 +90,7 @@ export class Speaker {
   public onBeginSpeak(handler: SpeakSubscriptionCallback): void {
     this.rabbit.onTopic('begin.speak', (message): void => {
       handler(message);
-    });
+    }).catch(() => { /* pass */ });
   }
 
   /**
@@ -99,7 +100,7 @@ export class Speaker {
   public onEndSpeak(handler: SpeakSubscriptionCallback): void {
     this.rabbit.onTopic('end.speak', (message): void => {
       handler(message);
-    });
+    }).catch(() => { /* pass */ });
   }
 }
 

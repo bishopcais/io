@@ -1,5 +1,5 @@
 import { join } from 'path';
-import Io from '../src/io';
+import { Io } from '../src/io';
 
 test('blank io object throws on core properties', () => {
   const io = new Io({cogPath: join(__dirname, 'data', 'cog.json')});

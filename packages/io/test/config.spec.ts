@@ -1,4 +1,4 @@
-import Config from '../src/config';
+import { Config } from '../src/config';
 
 test('basic config', () => {
   const config = new Config({foo: true, item: {key: {value: 'hi'}}, bar: false});

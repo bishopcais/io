@@ -1,7 +1,20 @@
 import RedisClient from 'ioredis';
-import Io from './io';
+import { Io } from './io';
 import { RedisOptions } from './types';
 
+/**
+ * Redis module. This module provides a shallow wrapper around the [ioredis](https://github.com/luin/ioredis)
+ * library. See [ioredis#Redis](https://github.com/luin/ioredis/blob/master/API.md#new-redisport-host-options) for
+ * allowed options.
+ *
+ * ioredis itself then makes available all [redis commands](https://redis.io/commands) through a Promise-based API.
+ * Please consult the redis docs for specific commands you can use, with basic usage looking like:
+ *
+ * ```js
+ * const result = await io.redis.get('foo');
+ * await io.redis.set('foo', 'bar');
+ * ```
+ */
 export class Redis extends RedisClient {
   public options: RedisOptions;
 
@@ -37,5 +50,3 @@ export class Redis extends RedisClient {
     return subscriber;
   }
 }
-
-export default Redis;

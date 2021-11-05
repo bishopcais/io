@@ -1,37 +1,36 @@
-import { v1 as uuid } from 'uuid';
-import loadCogFile from '@cisl/cog-loader';
+import { v1 as uuidv1 } from 'uuid';
+import loadCogFile, { CogLoaderOptions } from '@cisl/cog-loader';
 
-import { IoCog, IoOptions } from './types';
-import Rabbit from './rabbit';
-import Redis from './redis';
-import Mongo from './mongo';
-import Config from './config';
+import { IoCog } from './types';
+import { Rabbit } from './rabbit';
+import { Redis } from './redis';
+import { Mongo } from './mongo';
+import { Config } from './config';
 
 const registeredFunctions: ((io: Io) => void)[] = [];
 
 /**
- * Class representing the Io object.
- *
- * Note, we must export this as a regular class to allow for module
- * augmentation in plugins.
+ * The Io class. You should usually not be directly instantiating this class,
+ * rather calling the {@link export=} function instead.
  */
 export class Io {
   public config: Config;
 
-  public _mongo?: Mongo;
+  private _mongo?: Mongo;
 
-  public _rabbit?: Rabbit;
+  private _rabbit?: Rabbit;
 
-  public _redis?: Redis;
+  private _redis?: Redis;
 
   public plugins: {[key: string]: Plugin} = {};
 
   /**
-   * Create the Io object, and establish connections to the central message broker and store
-   * @param  {string|object} [config] - string pointing to a file to use or an object containing settings
-   *                  to override the default loaded file
+   * Io constructor.
+   *
+   * See [cog-loader#options](https://github.com/bishopcais/cog-loader#usage) for details on options,
+   * however the defaults should usually suffice in most cases.
    */
-  public constructor(options?: IoOptions) {
+  public constructor(options?: CogLoaderOptions) {
     this.config = new Config((loadCogFile(options) as IoCog));
 
     if (this.config.hasValue('mongo')) {
@@ -49,6 +48,11 @@ export class Io {
     runRegisterFunctions(this, registeredFunctions);
   }
 
+  /**
+   * Get the instantiated rabbit module.
+   *
+   * If rabbit has not been activated, throw an error.
+   */
   public get rabbit(): Rabbit {
     if (!this._rabbit) {
       throw new Error('Rabbit has not been initialized');
@@ -56,6 +60,11 @@ export class Io {
     return this._rabbit;
   }
 
+  /**
+   * Get the instantiated mongo module.
+   *
+   * If mongo has not been activated, throw an error.
+   */
   public get mongo(): Mongo {
     if (!this._mongo) {
       throw new Error('Mongo has not been initialized');
@@ -63,6 +72,11 @@ export class Io {
     return this._mongo;
   }
 
+  /**
+   * Get the instantiated redis module.
+   *
+   * If redis has not been activated, throw an error.
+   */
   public get redis(): Redis {
     if (!this._redis) {
       throw new Error('Redis has not been initialized');
@@ -71,14 +85,16 @@ export class Io {
   }
 
   /**
-   * Generate UUIDv1.
-   * @returns {string} The unique ID.
+   * Utility function to generate UUIDv1
    */
   public generateUuid(): string {
-    return uuid();
+    return uuidv1();
   }
 }
 
+/**
+ * @internal
+ */
 export function runRegisterFunctions(io: Io, registerFunctions: ((io: Io) => void)[]): void {
   for (const registerFunction of registerFunctions) {
     registerFunction(io);
@@ -86,8 +102,9 @@ export function runRegisterFunctions(io: Io, registerFunctions: ((io: Io) => voi
 
 }
 
+/**
+ * @internal
+ */
 export function registerPlugins(...registerFunctions: ((io: Io) => void)[]): void {
   registeredFunctions.push(...registerFunctions);
 }
-
-export default Io;

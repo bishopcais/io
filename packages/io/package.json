@@ -9,6 +9,7 @@
     "build": "yarn clean && yarn compile",
     "compile": "tsc -p tsconfig.build.json",
     "clean": "rimraf dist",
+    "docs": "typedoc && cp -R ../../img docs",
     "watch": "tsc -w",
     "prepublishOnly": "echo \"Do not run publish directly, run tsc-publish\" && exit 1",
     "tsc-publish": "publisher"
@@ -44,16 +45,16 @@
   "homepage": "https://github.com/cislrpi/io#readme",
   "dependencies": {
     "@cisl/cog-loader": "^1.0.0-dev.4",
-    "@types/amqplib": "^0.5.12",
+    "@types/amqplib": "^0.8.2",
     "@types/ioredis": "^4.0.18",
     "@types/node": "^12.0.3",
     "@types/request": "^2.48.1",
-    "@types/uuid": "^3.4.4",
+    "@types/uuid": "^8.3.1",
     "amqplib": "^0.8.0",
     "ioredis": "^4.14.1",
     "mongoose": "^5.11.0",
     "node-fetch": "^2.6.1",
-    "uuid": "^3.3.2"
+    "uuid": "^8.3.2"
   },
   "devDependencies": {
     "@types/node-fetch": "^2.5.7",

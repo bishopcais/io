@@ -5,7 +5,6 @@
   "exclude": [
     "packages/*/dist/**/*.ts"
   ],
-  "plugin": [
-    "typedoc-plugin-missing-exports"
-  ]
+  "plugin": [],
+  "readme": "README.md"
 }

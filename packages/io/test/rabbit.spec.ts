@@ -1,7 +1,7 @@
-import Io from '../src/io';
+import { Io } from '../src/io';
 import { Rabbit } from '../src/rabbit';
 import { join } from 'path';
-import uuidv4 from 'uuid/v4';
+import { v4 as uuidv4 } from 'uuid';
 
 const rabbitCog = join(__dirname, 'data', 'cog.rabbit.json');
 

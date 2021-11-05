@@ -2,7 +2,7 @@ import cislio from '@cisl/io';
 import { Io } from '@cisl/io/io';
 import { Rabbit } from '@cisl/io/rabbit';
 import { RabbitMessage } from '@cisl/io/types';
-import Redis from '@cisl/io/redis';
+import { Redis } from '@cisl/io/redis';
 
 declare module '@cisl/io/io' {
   interface Io {
@@ -36,7 +36,7 @@ export class Transcript {
    * @param  {transcriptSubscriptionCallback} handler - Function to respond the transcription results.
    */
   public onFinal(handler: CallbackHandler): void {
-    this.rabbit.onTopic('*.final.transcript', handler);
+    this.rabbit.onTopic('*.final.transcript', handler).catch(() => { /* pass */ });
   }
 
   /**
@@ -44,7 +44,7 @@ export class Transcript {
    * @param  {transcriptSubscriptionCallback} handler - Function to respond the transcription results.
    */
   public onInterim(handler: CallbackHandler): void {
-    this.rabbit.onTopic('*.interim.transcript', handler);
+    this.rabbit.onTopic('*.interim.transcript', handler).catch(() => { /* pass */ });
   }
 
   /**
@@ -52,7 +52,7 @@ export class Transcript {
    * @param  {transcriptSubscriptionCallback} handler - Function to respond the transcription results.
    */
   public onAll(handler: CallbackHandler): void {
-    this.rabbit.onTopic('*.*.transcript', handler);
+    this.rabbit.onTopic('*.*.transcript', handler).catch(() => { /* pass */ });
   }
 
   /**
@@ -60,7 +60,7 @@ export class Transcript {
    * @param  {string} model - The name of the model to switch to.
    */
   public switchModel(model: string): void {
-    this.rabbit.publishTopic('switchModel.transcript.command', model);
+    this.rabbit.publishTopic('switchModel.transcript.command', model).catch(() => { /* pass */ });
   }
 
   /**
@@ -79,14 +79,14 @@ export class Transcript {
    * @param  {Array<string>} words - An array of keywords
    */
   public addKeywords(words: string[]): void {
-    this.redis.sadd('transcript:keywords', ...words);
+    this.redis.sadd('transcript:keywords', ...words).catch(() => { /* pass */ });
   }
 
   /**
    * Request all transcript workers to stop publishing. Useful for entering a privacy mode.
    */
   public stopPublishing(): void {
-    this.rabbit.publishTopic('stopPublishing.transcript.command');
+    this.rabbit.publishTopic('stopPublishing.transcript.command').catch(() => { /* pass */ });
   }
 
   /**
@@ -99,10 +99,11 @@ export class Transcript {
    */
   public publish(micType: string, isFinal: boolean, msg: Record<string, unknown>): void {
     if (!msg.time_captured) {
+      // eslint-disable-next-line camelcase
       msg.time_captured = new Date().getTime();
     }
     msg.messageID = this.io.generateUuid();
-    this.rabbit.publishTopic(`${micType}.${isFinal ? 'final' : 'interim'}.transcript`, JSON.stringify(msg));
+    this.rabbit.publishTopic(`${micType}.${isFinal ? 'final' : 'interim'}.transcript`, JSON.stringify(msg)).catch(() => { /* pass */ });
   }
 }
 

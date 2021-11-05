@@ -8,19 +8,44 @@ npm install @cisl/io-display
 ```
 
 ## Usage
-```js
-const io = require('@cisl/io');
-const { registerDisplayWorker } = require('@cisl/io-display');
+```javascript
+import cislio, { registerPlugins } from '@cisl/io';
+import { registerDisplayWorker } from '@cisl/io-display';
 
-io.registerPlugins(registerDisplayWorker);
-io.display.openDisplayWorker('main', 'test', content_grid).then((response) => {
-  io.display.displayUrl('https://example.com', {
-    position: {
-      gridLeft: 1,
-      gridTop: 1
+registerPlugins(registerDisplayWorker);
+
+const io = cislio();
+
+(async function (): Promise<void> {
+  const { displayContext } = await io.display.openDisplayWorker('contextOne', {
+    main: {
+      displayName: 'main',
+      contentGrid: {
+        row: 3,
+        col: 3,
+      },
     },
-    widthFactor: 2,
-    heightFactor: 2
   });
-});
+
+  const promises = [];
+
+  await io.display.displayUrl('main', 'http://www.google.com', {
+    widthFactor: 1,
+    heightFactor: 1,
+  });
+
+  await new Promise((resolve) => {
+    setTimeout(resolve, 8000);
+  });
+  await displayContext.close();
+})()
+  .then(() => {
+    console.log('done');
+    process.exit();
+  })
+  .catch((err) => {
+    console.error(err);
+  });
 ```
+
+You can see additional example usages of this module in the [display-worker/examples](https://github.com/bishopcais/display-worker/tree/master/examples) folder.
