@@ -23,18 +23,14 @@ async function main (): Promise<void> {
   const docsPath = path.join(__dirname, '..', 'docs');
   rimraf.sync(docsPath);
   fs.mkdirSync(docsPath);
+
   const packagesPath = path.join(__dirname, '..', 'packages');
-  const promises = [];
-  const docsPromises = [];
-  for (const dir of fs.readdirSync(packagesPath, { withFileTypes: true })) {
-    if (!dir.isDirectory()) {
-      continue;
-    }
-    promises.push(promiseExec(`yarn workspace @cisl/${dir.name} docs`));
-    docsPromises.push(fs.move(path.join(packagesPath, dir.name, 'docs'), path.join(docsPath, dir.name)));
+  const dirs = fs.readdirSync(packagesPath, { withFileTypes: true }).filter(dirent => dirent.isDirectory());
+  for (const dir of dirs) {
+    rimraf.sync(path.join(packagesPath, dir.name, 'docs'));
+    await promiseExec(`yarn workspace @cisl/${dir.name} docs`);
+    fs.moveSync(path.join(packagesPath, dir.name, 'docs'), path.join(docsPath, dir.name));
   }
-  await Promise.all(promises);
-  await Promise.all(docsPromises);
 
   fs.copyFileSync(path.join(__dirname, 'index.html'), path.join(docsPath, 'index.html'));
   fs.copyFileSync(path.join(__dirname, '.nojekyll'), path.join(docsPath, '.nojekyll'));
