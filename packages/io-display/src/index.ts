@@ -150,6 +150,7 @@ export class DisplayWorker {
 
   constructor(io: Io) {
     this.io = io;
+    this.io.rabbit.setTimeout(10000);
 
     this.uniformGridCellSizeByWindow = new Map();
   }
@@ -333,6 +334,8 @@ export class DisplayWorker {
     // calling this function within multiple display workers ensures this function is executed only once.
     const name = await this.io.redis.getset('display:activeDisplayContext', displayContextName);
     if (name !== displayContextName) {
+      // TODO
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       const m = await (new DisplayContext(this.io, displayContextName, {})).restoreFromDisplayWorkerStates(reset);
       this.io.rabbit.publishTopic('display.displayContext.changed', {
         type: 'displayContextChanged',
@@ -341,6 +344,8 @@ export class DisplayWorker {
           lastDisplayContext: name,
         },
       }).catch(() => { /* pass */ });
+      // TODO
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-return
       return m;
     }
 
@@ -417,14 +422,14 @@ export class DisplayWorker {
   * hides all display contexts. If the display context already exists, it is made active and a DisplayContext Object is restored from store.
   * @returns {Promise<Object>} A array of JSON object containing status of hide function execution at all display workers.
   */
-  async hideAll(): Promise<any> {
+  async hideAll(): Promise<BaseResponse[]> {
     const cmd = {
       command: 'hide-all-windows',
     };
     const displays = await this.getDisplays();
-    const _ps: Promise<any>[] = [];
+    const _ps: Promise<BaseResponse>[] = [];
     for (const [k] of displays) {
-      _ps.push(this.io.rabbit.publishRpc(`rpc-display-${k}`, cmd).then(m => m.content));
+      _ps.push(this.io.rabbit.publishRpc<BaseResponse>(`rpc-display-${k}`, cmd).then(m => m.content));
     }
     const m = await Promise.all(_ps);
     void this.io.redis.del('display:activeDisplayContext');

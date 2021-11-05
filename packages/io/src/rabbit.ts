@@ -44,6 +44,8 @@ export class Rabbit {
 
   private io: Io;
 
+  private timeout = 3000;
+
   public constructor(io: Io) {
     io.config.defaults({
       rabbit: {
@@ -125,6 +127,10 @@ export class Rabbit {
     this.prefix = this.options.prefix;
     this.exchange = io.config.get<string>('rabbit:exchange');
     this.io = io;
+  }
+
+  public setTimeout(timeout: number): void {
+    this.timeout = timeout;
   }
 
   public async close(): Promise<void> {
@@ -271,7 +277,7 @@ export class Rabbit {
     const contentType = options.contentType || null;
 
     options.correlationId = options.correlationId || this.io.generateUuid();
-    options.expiration = options.expiration || 3000;
+    options.expiration = options.expiration || this.timeout;
     options.contentType = options.contentType || this.getContentType(content);
 
     // not defining this queue, even if we don't use it causes the replyTo field to not
