@@ -17,18 +17,16 @@ describe('rabbit, topic', () => {
       expect(io.rabbit).toBeInstanceOf(Rabbit);
       const topicName = `test.topic.${uuidv4().replace('-', '')}`;
       if (!io.rabbit) {
-        return expect(true).toBeFalsy;
+        return expect(true).toBe(false);
       }
       io.rabbit.onTopic(topicName, (message, err) => {
-        expect(err).toBeUndefined;
+        expect(err).toBe(undefined);
         expect(message.content).toStrictEqual(value);
-        (io.rabbit ).close().then(done());
+        io.rabbit.close().then(done()).catch(done);
       }).then(() => {
-        if (!io.rabbit) {
-          expect(false).toBeTruthy;
-          return;
-        }
-        io.rabbit.publishTopic(topicName, value);
+        io.rabbit.publishTopic(topicName, value).catch(done);
+      }).catch((err) => {
+        done(err);
       });
     });
   });
@@ -44,24 +42,17 @@ describe('rabbit, rpc', () => {
     test('rabbit rpc', (done) => {
       const io = new Io({cogPath: rabbitCog});
       expect(io.rabbit).toBeInstanceOf(Rabbit);
-      if (!io.rabbit) {
-        return expect(true).toBeFalsy;
-      }
       const queueName = `rpc-test-${uuidv4().replace('-', '')}`;
       io.rabbit.onRpc(queueName, (message, reply, err) => {
-        expect(err).toBeUndefined;
+        expect(err).toBeUndefined();
         expect(message.content).toStrictEqual(req);
         reply(res);
       }).then(() => {
-        if (!io.rabbit) {
-          expect(false).toBeTruthy;
-          return;
-        }
         io.rabbit.publishRpc(queueName, req).then((msg) => {
           expect(msg.content).toEqual(res);
-          (io.rabbit ).close().then(() => done());
-        });
-      });
+          io.rabbit.close().then(done).catch(done);
+        }).catch(done);
+      }).catch(done);
     });
   });
 });
@@ -69,23 +60,20 @@ describe('rabbit, rpc', () => {
 test('rpc with replyTo', (done) => {
   const io = new Io({cogPath: rabbitCog});
   expect(io.rabbit).toBeInstanceOf(Rabbit);
-  if (!io.rabbit) {
-    return expect(true).toBeFalsy;
-  }
+  const rpcName = `rpc-test-${uuidv4().replace(/-/g, '')}`;
+  const queueName = `queue-test-${uuidv4().replace(/-/g, '')}`;
 
-  const rpcName = `rpc-test${uuidv4().replace('-', '')}`;
-  const queueName = `queue-test${uuidv4().replace('-', '')}`;
   io.rabbit.onQueue(queueName, (msg) => {
     expect(msg.content).toStrictEqual('hello');
-    (io.rabbit ).close().then(() => done());
-  });
+    io.rabbit.close().then(done).catch(done);
+  }).catch(done);
 
   io.rabbit.onRpc(rpcName, (msg, reply) => {
     expect(msg.content).toStrictEqual('test');
     reply('hello');
-  });
+  }).catch(done);
 
   io.rabbit.publishRpc(rpcName, 'test', {replyTo: queueName}).then((msg) => {
-    expect(msg).toBeNull;
-  });
+    expect(msg.content).toBe(null);
+  }).catch(done);
 });

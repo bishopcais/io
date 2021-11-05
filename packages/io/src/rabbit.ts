@@ -47,7 +47,7 @@ export class Rabbit {
 
   private io: Io;
 
-  private timeout = 3000;
+  private timeout = 30000;
 
   /**
    * Rabbit constructor.
@@ -338,7 +338,7 @@ export class Rabbit {
     const contentType = options.contentType || null;
 
     options.correlationId = options.correlationId || this.io.generateUuid();
-    options.expiration = options.expiration || this.timeout;
+    options.expiration = options.expiration || 3000;
     options.contentType = options.contentType || this.getContentType(content);
 
     // not defining this queue, even if we don't use it causes the replyTo field to not
@@ -361,24 +361,24 @@ export class Rabbit {
           }, options.expiration + 100);
         }
 
-        channel.consume(options.replyTo, (msg) => {
+        channel.consume((options.replyTo), (msg) => {
           if (msg !== null) {
             if (msg.properties.correlationId === options.correlationId) {
               clearTimeout(timeoutId);
               const promise = consumerTag ? channel.cancel(consumerTag) as unknown as Promise<void> : Promise.resolve();
+
               promise.then(() => {
                 if (msg.properties.headers.error) {
                   reject(new Error(msg.properties.headers.error));
                 }
                 else {
-                  (msg as RabbitMessage).content = this.parseContent(msg.content, contentType || msg.properties.contentType);
                   resolve({
                     ...msg,
-                    content: msg.content as unknown as T,
+                    content: this.parseContent(msg.content, contentType || msg.properties.contentType) as T,
                   });
                 }
-              }).catch(() => {
-                // pass
+              }).catch((err) => {
+                reject(err);
               });
             }
             else {
@@ -387,9 +387,7 @@ export class Rabbit {
           }
         }, { noAck: true}).then((reply) => {
           consumerTag = reply.consumerTag;
-        }).catch(() => {
-          // pass
-        });
+        }).catch(() => { /* pass */ });
       }
 
       channel.sendToQueue(queueName, this.encodeContent(content), options);
@@ -449,8 +447,8 @@ export class Rabbit {
 
   private async _onRpc<T>(queueName: string, options: RabbitOnRpcOptions, handler: RpcReplyCallback<T>): Promise<void> {
     const channel = await this.pch;
-    const noAck = handler.length < 3;
-    await channel.prefetch(1);
+    const noAck = handler.length < 4;
+    channel.prefetch(1).catch(() => { /* pass */ });
     const queue = await channel.assertQueue(queueName, {exclusive: options.exclusive || true, autoDelete: true});
     await channel.consume(queue.queue, (msg: amqplib.ConsumeMessage | null) => {
       let replyCount = 0;
@@ -489,20 +487,15 @@ export class Rabbit {
         channel.ack(msg);
       };
 
-      let err = null;
       try {
-        const handledMsg: RabbitMessage<T> = {
+        const handledMessage: RabbitMessage<T> = {
           ...msg,
-          content: this.parseContent(msg.content, msg.properties.contentType) as T,
+          content: this.parseContent(msg.content, options.contentType || msg.properties.contentType) as T,
         };
-        handler(handledMsg, reply, ackFunc, err);
+        handler(handledMessage, reply, ackFunc);
       }
-      catch (exc) {
-        err = exc as Error;
-        handler({
-          ...msg,
-          content: msg.content as unknown as T,
-        }, reply, null, err);
+      catch (err) {
+        handler(msg as unknown as  RabbitMessage<T>, reply, ackFunc || err, ackFunc ? err : undefined);
       }
     }, { noAck });
   }
