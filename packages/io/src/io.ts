@@ -22,8 +22,6 @@ export class Io {
 
   private _redis?: Redis;
 
-  public plugins: {[key: string]: Plugin} = {};
-
   /**
    * Io constructor.
    *
@@ -46,6 +44,20 @@ export class Io {
     }
 
     runRegisterFunctions(this, registeredFunctions);
+  }
+
+  /**
+   * Close all open connections that Io has made. While the connections
+   * should close automatically when the process exits, it's still recommended
+   * to call this function to avoid "unexpected closures".
+   */
+  close(): Promise<void[]> {
+    const promises = [
+      this._rabbit?.close(),
+      this._mongo?.disconnect(),
+      this._redis?.disconnect(),
+    ].filter((p) => !!p);
+    return Promise.all(promises);
   }
 
   /**
@@ -99,7 +111,6 @@ export function runRegisterFunctions(io: Io, registerFunctions: ((io: Io) => voi
   for (const registerFunction of registerFunctions) {
     registerFunction(io);
   }
-
 }
 
 /**
