@@ -338,7 +338,7 @@ export class Rabbit {
     const contentType = options.contentType || null;
 
     options.correlationId = options.correlationId || this.io.generateUuid();
-    options.expiration = options.expiration || 3000;
+    options.expiration = options.expiration || this.timeout;
     options.contentType = options.contentType || this.getContentType(content);
 
     // not defining this queue, even if we don't use it causes the replyTo field to not

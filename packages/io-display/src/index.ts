@@ -1,8 +1,8 @@
 import cislio from '@cisl/io';
 import { Io } from '@cisl/io/io';
 import { UniformGridCellSize } from './display-window';
-import { ViewObject, ViewObjectOptions } from './view-object';
-import { DisplayOptions } from './types';
+import { ViewObject } from './view-object';
+import { DisplayOptions, DisplayUrlOptions } from './types';
 
 import { DisplayContext } from './display-context';
 import { RabbitMessage } from '@cisl/io/types';
@@ -13,20 +13,6 @@ declare module '@cisl/io/io' {
   interface Io {
     display: DisplayWorker;
   }
-}
-
-interface DisplayUrlOptions extends Pick<ViewObjectOptions, 'slide' | 'deviceEmulation'> {
-  left?: number;
-  top?: number;
-  position?: {
-    gridLeft: number;
-    gridTop: number;
-  };
-  nodeIntegration?: boolean;
-  width?: number | string;
-  height?: number | string;
-  widthFactor?: number;
-  heightFactor?: number;
 }
 
 interface BoundsResponse {
@@ -147,12 +133,37 @@ export class DisplayWorker {
 
   private uniformGridCellSizeByWindow: Map<string, UniformGridCellSize>;
 
-
   constructor(io: Io) {
     this.io = io;
     this.io.rabbit.setTimeout(10000);
 
     this.uniformGridCellSizeByWindow = new Map();
+  }
+
+  public async openDisplayContext(displayContextName: string, displayOptions: DisplayOptions): Promise<DisplayContext> {
+    const displays = await this.getDisplays();
+    for (const windowName of Object.keys(displayOptions)) {
+      const display = displays.get(displayOptions[windowName].displayName);
+      if (display) {
+        displayOptions[windowName] = {
+          ...display,
+          ...displayOptions[windowName],
+        };
+      }
+    }
+
+    const displayContext = await this.create(displayContextName, displayOptions);
+    for (const windowName of Object.keys(displayOptions)) {
+      const displayWindow = displayContext.getDisplayWindow(windowName);
+      await displayWindow.clearContents();
+      if (displayOptions[windowName].contentGrid) {
+        await displayWindow.createUniformGrid({
+          contentGrid: displayOptions[windowName].contentGrid,
+        });
+      }
+    }
+
+    return displayContext;
   }
 
   /**
@@ -161,13 +172,6 @@ export class DisplayWorker {
    * @param display The name of the context within display worker to communicate with
    */
   public async openDisplayWorker(displayContextName: string, displayOptions: DisplayOptions): Promise<{displayContext: DisplayContext; uniformGridCellSize: UniformGridCellSize}> {
-    /*
-    const windows = await this.displayContextFactory.getDisplays();
-    const bounds = windows.get(displayName) || {};
-    bounds.contentGrid = contentGrid;
-    bounds.displayName = displayName;
-    */
-
     const displays = await this.getDisplays();
     for (const windowName of Object.keys(displayOptions)) {
       const display = displays.get(displayOptions[windowName].displayName);
@@ -594,11 +598,11 @@ export class DisplayWorker {
   }
 }
 
-export function registerDisplayWorker(io: Io): void {
+export function registerDisplay(io: Io): void {
   if (!io.rabbit || !io.redis) {
     throw new Error('Requires both redis and rabbitmq');
   }
   io.display = new DisplayWorker(io);
 }
 
-cislio.registerPlugins(registerDisplayWorker);
+cislio.registerPlugins(registerDisplay);

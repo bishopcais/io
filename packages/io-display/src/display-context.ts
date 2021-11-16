@@ -5,7 +5,7 @@ import { DisplayWindow } from './display-window';
 import { ViewObject, ViewObjectOptions, ViewObjectRequestResponse } from './view-object';
 import { RabbitMessage } from '@cisl/io/types';
 
-import { DisplayOptions, DisplayResponse, ResponseContent, Window, WindowOptions } from './types';
+import { DisplayOptions, DisplayResponse, DisplayUrlOptions, ResponseContent, Window, WindowOptions } from './types';
 
 /**
  * @typedef {Promise.<Object>} display_rpc_result
@@ -95,6 +95,8 @@ export class DisplayContext {
 
   private displayWindows: Map<string, DisplayWindow>;
 
+  private displayNames: Set<string>;
+
   private viewObjects: Map<string, ViewObject>;
 
   private settings: DisplayContextSettings;
@@ -115,16 +117,20 @@ export class DisplayContext {
     this.name = name;
     this.displayWindows = new Map();
     this.viewObjects = new Map();
-    if (!isEmpty(settings)) {
-      this.settings = Object.keys(settings).reduce((acc, key) => {
-        acc[key] = {
-          ...settings[key],
-          windowName: key,
-          displayName: settings[key].displayName || key,
-        };
-        return acc;
-      }, {});
-    }
+
+    this.displayNames = new Set();
+
+    this.settings = Object.keys(settings).reduce<DisplayContextSettings>((acc, key) => {
+      acc[key] = {
+        ...settings[key],
+        windowName: key,
+        displayName: settings[key].displayName || key,
+      };
+
+      this.displayNames.add(acc[key].displayName);
+
+      return acc;
+    }, {});
 
     this.io.rabbit.onTopic('display.removed', (response) => {
       this._clean((response.content as string));
@@ -133,11 +139,15 @@ export class DisplayContext {
     });
 
     this.io.rabbit.onQueueDeleted((queueName) => {
-      if (queueName.indexOf('rpc-display-') > -1) {
+      if (this.validQueue(queueName)) {
         const closedDisplay = queueName.replace('rpc-display-', '');
         this._clean(closedDisplay);
       }
     });
+  }
+
+  private validQueue(queueName: string): boolean {
+    return (queueName.indexOf('rpc-display-') > -1) && this.displayNames.has(queueName.replace('rpc-display-', ''));
   }
 
   _clean(closedDisplay: string): void {
@@ -195,7 +205,11 @@ export class DisplayContext {
     this.displayWindows.clear();
     this.viewObjects.clear();
     let windowCount = 0;
+
     states.forEach(state => {
+      if (state.context !== this.name) {
+        return;
+      }
       if (state.windows) {
         for (const k of Object.keys(state.windows)) {
           const opts = state.windows[k];
@@ -221,6 +235,7 @@ export class DisplayContext {
         }
       }
     });
+
     if (windowCount === 0) {
       // initialize display context from options
       const bounds = await this.getWindowBounds();
@@ -241,7 +256,7 @@ export class DisplayContext {
     const qs = await this.io.rabbit.getQueues();
     const availableDisplayNames: string[] = [];
     qs.forEach(queue => {
-      if ((queue.state === 'running' || queue.state === 'live') && queue.name.indexOf('rpc-display-') > -1) {
+      if ((queue.state === 'running' || queue.state === 'live') && this.validQueue(queue.name)) {
         availableDisplayNames.push(queue.name);
       }
     });
@@ -497,6 +512,43 @@ export class DisplayContext {
       map[k] = v.windowName;
     }
     return viewObject;
+  }
+
+  public async displayUrl(windowName: string, url: string, options: DisplayUrlOptions): Promise<ViewObject> {
+    const uniformGridCellSize = await this.displayWindows.get(windowName).getUniformGridCellSize();
+
+    if ((options.width === undefined || options.height === undefined) && uniformGridCellSize === undefined) {
+      throw new Error('Uniform grid cell size must be initialized');
+    }
+
+    if (options.width === undefined && options.widthFactor === undefined) {
+      throw new Error('width or widthFactor is required');
+    }
+    if (options.height === undefined && options.heightFactor === undefined) {
+      throw new Error('height or heightFactor is required');
+    }
+
+    return await this.createViewObject({
+      nodeIntegration: false,
+      uiDraggable: true,
+      uiClosable: true,
+      ...(options.top === undefined && options.left === undefined ? {
+        position: {
+          gridLeft: 1,
+          gridTop: 1,
+        },
+      } : {}),
+      ...options,
+      width:
+        options.width !== undefined
+          ? (typeof options.width === 'string' ? options.width : `${options.width}px`)
+          : `${options.widthFactor * uniformGridCellSize.width}px`,
+      height:
+        options.height !== undefined
+          ? (typeof options.height === 'string' ? options.height : `${options.height}px`)
+          : `${options.heightFactor * uniformGridCellSize.height}px`,
+      url,
+    }, windowName);
   }
 
   /**

@@ -1,3 +1,5 @@
+import { ViewObjectOptions } from './view-object';
+
 export interface ResponseContent {
   details: {
     viewId: string;
@@ -56,4 +58,18 @@ export interface BaseResponse {
   status: string;
   command: string;
   displayName: string;
+}
+
+export interface DisplayUrlOptions extends Pick<ViewObjectOptions, 'slide' | 'deviceEmulation'> {
+  left?: number;
+  top?: number;
+  position?: {
+    gridLeft: number;
+    gridTop: number;
+  };
+  nodeIntegration?: boolean;
+  width?: number | string;
+  height?: number | string;
+  widthFactor?: number;
+  heightFactor?: number;
 }
