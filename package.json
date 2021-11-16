@@ -6,7 +6,7 @@
   "private": true,
   "scripts": {
     "build": "yarn io build && yarn io-celio-speaker build && yarn io-celio-transcript build && yarn io-display build && yarn io-speaker build",
-    "docs": "ts-node utils/docs.ts",
+    "docs": "typedoc",
     "io": "yarn workspace @cisl/io",
     "io-celio-speaker": "yarn workspace @cisl/io-celio-speaker",
     "io-celio-speaker:build": "yarn workspace @cisl/io-celio-speaker build",
@@ -34,7 +34,7 @@
     "jest": "^27.0.6",
     "ts-jest": "^27.0.3",
     "typedoc": "^0.22.7",
-    "typedoc-plugin-missing-exports": "^0.22.3",
+    "typedoc-plugin-missing-exports": "^0.22.4",
     "typescript": "^4.4.3"
   },
   "devDependencies": {
