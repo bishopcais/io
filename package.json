@@ -6,7 +6,7 @@
   "private": true,
   "scripts": {
     "build": "yarn io build && yarn io-celio-speaker build && yarn io-celio-transcript build && yarn io-display build && yarn io-speaker build",
-    "docs": "ts-node utils/docs.ts",
+    "docs": "typedoc && cp -R img docs/img",
     "io": "yarn workspace @cisl/io",
     "io-celio-speaker": "yarn workspace @cisl/io-celio-speaker",
     "io-celio-speaker:build": "yarn workspace @cisl/io-celio-speaker build",
