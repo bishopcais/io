@@ -1,0 +1,23 @@
+name: Publish
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v1
+        with:
+          node-version: 12
+          cache: yarn
+
+      - run: yarn
+
+      - run: yarn workspace @cisl/io publisher
+      - run: yarn workspace @cisl/io-celio-speaker publisher
+      - run: yarn workspace @cisl/io-celio-transcript publisher
+      - run: yarn workspace @cisl/io-display publisher
+      - run: yarn workspace @cisl/io-speaker publisher
