@@ -6,8 +6,8 @@ specific docs:
 * [`@cisl/io`](packages/io/README.md)
 * [`@cisl/io-display`](packages/io-display/README.md)
 * [`@cisl/io-speaker`](packages/io-speaker/README.md)
-* [`@cisl/io-celio-speaker](packages/io-celio-speaker/README.md)
-* [`@cisl/io-celio-transcript](packges/io-celio-transcript/README.md)
+* [`@cisl/io-celio-speaker`](packages/io-celio-speaker/README.md)
+* [`@cisl/io-celio-transcript`](packges/io-celio-transcript/README.md)
 
 API documentation is available at https://bishopcais.github.io/io.
 
