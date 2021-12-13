@@ -12,3 +12,12 @@ io.transcript.onFinal((msg) => {
     console.log(msg.content);
 });
 ```
+
+```typescript
+import io from '@cisl/io';
+import '@cisl/io-celio-transcript';
+
+io.transcript.onFinal((msg) => {
+    console.log(msg.content);
+});
+```

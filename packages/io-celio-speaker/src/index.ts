@@ -1,3 +1,4 @@
+import cislio from '@cisl/io';
 import { Io } from '@cisl/io/io';
 import { Rabbit } from '@cisl/io/rabbit';
 import { RabbitMessage } from '@cisl/io/types';
@@ -107,3 +108,5 @@ export class Speaker {
 export function registerSpeaker(io: Io): void {
   io.speaker = new Speaker(io);
 }
+
+cislio.registerPlugins(registerSpeaker);
