@@ -162,6 +162,61 @@ export class DisplayContext {
     });
   }
 
+  public async displayUrl(
+    windowName: string,
+    url: string,
+    options: DisplayUrlOptions,
+  ): Promise<ViewObject> {
+    const uniformGridCellSize = await this.displayWindows
+      .get(windowName)
+      .getUniformGridCellSize();
+
+    if (
+      (options.width === undefined || options.height === undefined) &&
+      uniformGridCellSize === undefined
+    ) {
+      throw new Error('Uniform grid cell size must be initialized');
+    }
+
+    if (options.width === undefined && options.widthFactor === undefined) {
+      throw new Error('width or widthFactor is required');
+    }
+    if (options.height === undefined && options.heightFactor === undefined) {
+      throw new Error('height or heightFactor is required');
+    }
+
+    return await this.createViewObject(
+      {
+        nodeIntegration: false,
+        uiDraggable: true,
+        uiClosable: true,
+        ...(options.top === undefined && options.left === undefined
+          ? {
+              position: {
+                gridLeft: 1,
+                gridTop: 1,
+              },
+            }
+          : {}),
+        ...options,
+        width:
+          options.width !== undefined
+            ? typeof options.width === 'string'
+              ? options.width
+              : `${options.width}px`
+            : `${options.widthFactor * uniformGridCellSize.width}px`,
+        height:
+          options.height !== undefined
+            ? typeof options.height === 'string'
+              ? options.height
+              : `${options.height}px`
+            : `${options.heightFactor * uniformGridCellSize.height}px`,
+        url,
+      },
+      windowName,
+    );
+  }
+
   private validQueue(queueName: string): boolean {
     return (
       queueName.indexOf('rpc-display-') > -1 &&
@@ -169,7 +224,7 @@ export class DisplayContext {
     );
   }
 
-  _clean(closedDisplay: string): void {
+  private _clean(closedDisplay: string): void {
     const closedWindows: string[] = [];
     for (const [k, v] of this.displayWindows) {
       if (v.displayName === closedDisplay) {
@@ -195,7 +250,7 @@ export class DisplayContext {
     }
   }
 
-  async _postRequest<T = any>(displayName: string, data): Promise<T> {
+  private async _postRequest<T = any>(displayName: string, data): Promise<T> {
     const response = await this.io.rabbit.publishRpc(
       `rpc-display-${displayName}`,
       data,
@@ -279,7 +334,7 @@ export class DisplayContext {
     return this.show();
   }
 
-  async _executeInAvailableDisplays<T = any>(cmd: {
+  private async _executeInAvailableDisplays<T = any>(cmd: {
     command: string;
     options: { context: string };
   }): Promise<T[]> {
@@ -578,61 +633,6 @@ export class DisplayContext {
       map[k] = v.windowName;
     }
     return viewObject;
-  }
-
-  public async displayUrl(
-    windowName: string,
-    url: string,
-    options: DisplayUrlOptions,
-  ): Promise<ViewObject> {
-    const uniformGridCellSize = await this.displayWindows
-      .get(windowName)
-      .getUniformGridCellSize();
-
-    if (
-      (options.width === undefined || options.height === undefined) &&
-      uniformGridCellSize === undefined
-    ) {
-      throw new Error('Uniform grid cell size must be initialized');
-    }
-
-    if (options.width === undefined && options.widthFactor === undefined) {
-      throw new Error('width or widthFactor is required');
-    }
-    if (options.height === undefined && options.heightFactor === undefined) {
-      throw new Error('height or heightFactor is required');
-    }
-
-    return await this.createViewObject(
-      {
-        nodeIntegration: false,
-        uiDraggable: true,
-        uiClosable: true,
-        ...(options.top === undefined && options.left === undefined
-          ? {
-              position: {
-                gridLeft: 1,
-                gridTop: 1,
-              },
-            }
-          : {}),
-        ...options,
-        width:
-          options.width !== undefined
-            ? typeof options.width === 'string'
-              ? options.width
-              : `${options.width}px`
-            : `${options.widthFactor * uniformGridCellSize.width}px`,
-        height:
-          options.height !== undefined
-            ? typeof options.height === 'string'
-              ? options.height
-              : `${options.height}px`
-            : `${options.heightFactor * uniformGridCellSize.height}px`,
-        url,
-      },
-      windowName,
-    );
   }
 
   /**

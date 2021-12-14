@@ -122,6 +122,8 @@ interface FocusWindowResponse extends BaseResponse {
 
 /**
  * Class representing the DisplayContextFactory object.
+ *
+ * The main function to use is {@link openDisplayContext}
  */
 export class DisplayWorker {
   private io: Io;
@@ -135,6 +137,12 @@ export class DisplayWorker {
     this.io.rabbit.setTimeout(10000);
   }
 
+  /**
+   * Open a new or existing display context.
+   *
+   * @param displayContextName - Name of the display context
+   * @param displayOptions - Options for the display context
+   */
   public async openDisplayContext(
     displayContextName: string,
     displayOptions: DisplayOptions,
@@ -168,6 +176,7 @@ export class DisplayWorker {
   }
 
   /**
+   * @deprecated This will be removed in 2.0
    *
    * @param name The name of the display worker to communicate with
    * @param display The name of the context within display worker to communicate with
@@ -603,6 +612,9 @@ export class DisplayWorker {
   }
 }
 
+/**
+ * It is not suggested to call this function directly, and it will be removed in the future.
+ */
 export function registerDisplay(io: Io): void {
   if (!io.rabbit || !io.redis) {
     throw new Error('Requires both redis and rabbitmq');

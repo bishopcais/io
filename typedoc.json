@@ -8,5 +8,7 @@
   "plugin": [
     "typedoc-plugin-missing-exports"
   ],
-  "readme": "README.md"
+  "readme": "README.md",
+  "excludeInternal": true,
+  "sort": ["source-order"]
 }
