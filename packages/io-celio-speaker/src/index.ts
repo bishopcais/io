@@ -3,7 +3,6 @@ import { Io } from '@cisl/io/io';
 import { Rabbit } from '@cisl/io/rabbit';
 import { RabbitMessage } from '@cisl/io/types';
 
-
 declare module '@cisl/io/io' {
   interface Io {
     speaker: Speaker;
@@ -36,12 +35,19 @@ export class Speaker {
    * For a full list of voice you can use, check [Watson TTS website](http://www.ibm.com/watson/developercloud/doc/text-to-speech/http.shtml#voices).
    * @returns {Promise<Object>} Resolves to "succeeded" or "interrupted".
    */
-  public speak(text: string, options: {duration?: number, voice?: string} = {}): Promise<RabbitMessage> {
+  public speak(
+    text: string,
+    options: { duration?: number; voice?: string } = {},
+  ): Promise<RabbitMessage> {
     if (!options.duration) {
       options.duration = this.maxSpeakerDuration;
     }
 
-    return this.rabbit.publishRpc('rpc-speaker-speakText', Object.assign({}, options, {text}), { expiration: options.duration });
+    return this.rabbit.publishRpc(
+      'rpc-speaker-speakText',
+      Object.assign({}, options, { text }),
+      { expiration: options.duration },
+    );
   }
 
   /**
@@ -77,11 +83,15 @@ export class Speaker {
   }
 
   public beginSpeak(msg: Record<string, unknown>): void {
-    this.rabbit.publishTopic('begin.speak', msg).catch(() => { /* pass */ });
+    this.rabbit.publishTopic('begin.speak', msg).catch(() => {
+      /* pass */
+    });
   }
 
   public endSpeak(msg: Record<string, unknown>): void {
-    this.rabbit.publishTopic('end.speak', msg).catch(() => { /* pass */ });
+    this.rabbit.publishTopic('end.speak', msg).catch(() => {
+      /* pass */
+    });
   }
 
   /**
@@ -89,9 +99,13 @@ export class Speaker {
    * @param  {speakSubscriptionCallback} handler - The callback for handling the speaking events.
    */
   public onBeginSpeak(handler: SpeakSubscriptionCallback): void {
-    this.rabbit.onTopic('begin.speak', (message): void => {
-      handler(message);
-    }).catch(() => { /* pass */ });
+    this.rabbit
+      .onTopic('begin.speak', (message): void => {
+        handler(message);
+      })
+      .catch(() => {
+        /* pass */
+      });
   }
 
   /**
@@ -99,9 +113,13 @@ export class Speaker {
    * @param  {speakSubscriptionCallback} handler - The callback for handling the speaking events.
    */
   public onEndSpeak(handler: SpeakSubscriptionCallback): void {
-    this.rabbit.onTopic('end.speak', (message): void => {
-      handler(message);
-    }).catch(() => { /* pass */ });
+    this.rabbit
+      .onTopic('end.speak', (message): void => {
+        handler(message);
+      })
+      .catch(() => {
+        /* pass */
+      });
   }
 }
 

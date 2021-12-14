@@ -1,8 +1,7 @@
 import cislio from '@cisl/io';
 import { Io } from '@cisl/io/io';
 import { UniformGridCellSize } from './display-window';
-import { ViewObject } from './view-object';
-import { DisplayOptions, DisplayUrlOptions } from './types';
+import { DisplayOptions } from './types';
 
 import { DisplayContext } from './display-context';
 import { RabbitMessage } from '@cisl/io/types';
@@ -131,16 +130,15 @@ export class DisplayWorker {
 
   private uniformGridCellSize?: UniformGridCellSize;
 
-  private uniformGridCellSizeByWindow: Map<string, UniformGridCellSize>;
-
   constructor(io: Io) {
     this.io = io;
     this.io.rabbit.setTimeout(10000);
-
-    this.uniformGridCellSizeByWindow = new Map();
   }
 
-  public async openDisplayContext(displayContextName: string, displayOptions: DisplayOptions): Promise<DisplayContext> {
+  public async openDisplayContext(
+    displayContextName: string,
+    displayOptions: DisplayOptions,
+  ): Promise<DisplayContext> {
     const displays = await this.getDisplays();
     for (const windowName of Object.keys(displayOptions)) {
       const display = displays.get(displayOptions[windowName].displayName);
@@ -152,7 +150,10 @@ export class DisplayWorker {
       }
     }
 
-    const displayContext = await this.create(displayContextName, displayOptions);
+    const displayContext = await this.create(
+      displayContextName,
+      displayOptions,
+    );
     for (const windowName of Object.keys(displayOptions)) {
       const displayWindow = displayContext.getDisplayWindow(windowName);
       await displayWindow.clearContents();
@@ -171,7 +172,13 @@ export class DisplayWorker {
    * @param name The name of the display worker to communicate with
    * @param display The name of the context within display worker to communicate with
    */
-  public async openDisplayWorker(displayContextName: string, displayOptions: DisplayOptions): Promise<{displayContext: DisplayContext; uniformGridCellSize: UniformGridCellSize}> {
+  public async openDisplayWorker(
+    displayContextName: string,
+    displayOptions: DisplayOptions,
+  ): Promise<{
+    displayContext: DisplayContext;
+    uniformGridCellSize: UniformGridCellSize;
+  }> {
     const displays = await this.getDisplays();
     for (const windowName of Object.keys(displayOptions)) {
       const display = displays.get(displayOptions[windowName].displayName);
@@ -193,73 +200,27 @@ export class DisplayWorker {
         });
       }
       const uniformGridCellSize = await displayWindow.getUniformGridCellSize();
-      this.uniformGridCellSizeByWindow.set(windowName, uniformGridCellSize);
       this.uniformGridCellSize = uniformGridCellSize;
     }
 
-    return {displayContext: this.displayContext, uniformGridCellSize: this.uniformGridCellSize};
-  }
-
-  public async displayUrl(url: string, options: DisplayUrlOptions): Promise<ViewObject>;
-  public async displayUrl(windowName: string, url: string, options: DisplayUrlOptions): Promise<ViewObject>;
-
-  public async displayUrl(
-    windowNameOrUrl: string,
-    urlOrOptions: string | DisplayUrlOptions,
-    options?: DisplayUrlOptions,
-  ): Promise<ViewObject> {
-    const windowName = options ? windowNameOrUrl : 'main';
-    const url: string = options ? urlOrOptions as string : windowNameOrUrl;
-    options = options || urlOrOptions as DisplayUrlOptions;
-    const uniformGridCellSize = this.uniformGridCellSizeByWindow.get(windowName);
-
-    if (!this.displayContext) {
-      throw new Error('Display context must be initialized');
-    }
-
-    if ((options.width === undefined || options.height === undefined) && uniformGridCellSize === undefined) {
-      throw new Error('Uniform grid cell size must be initialized');
-    }
-
-    if (options.width === undefined && options.widthFactor === undefined) {
-      throw new Error('width or widthFactor is required');
-    }
-    if (options.height === undefined && options.heightFactor === undefined) {
-      throw new Error('height or heightFactor is required');
-    }
-
-    return await this.displayContext.createViewObject({
-      nodeIntegration: false,
-      uiDraggable: true,
-      uiClosable: true,
-      ...(options.top === undefined && options.left === undefined ? {
-        position: {
-          gridLeft: 1,
-          gridTop: 1,
-        },
-      } : {}),
-      ...options,
-      width:
-        options.width !== undefined
-          ? (typeof options.width === 'string' ? options.width : `${options.width}px`)
-          : `${options.widthFactor * uniformGridCellSize.width}px`,
-      height:
-        options.height !== undefined
-          ? (typeof options.height === 'string' ? options.height : `${options.height}px`)
-          : `${options.heightFactor * uniformGridCellSize.height}px`,
-      url,
-    }, windowName);
+    return {
+      displayContext: this.displayContext,
+      uniformGridCellSize: this.uniformGridCellSize,
+    };
   }
 
   /**
-  * gets the Display Workers details running in the environment.
-  * @returns {Promise} A ES2015 Map object with displayNames as keys and bounds as values.
-  */
+   * gets the Display Workers details running in the environment.
+   * @returns {Promise} A ES2015 Map object with displayNames as keys and bounds as values.
+   */
   async getDisplays(): Promise<Map<string, Bounds>> {
     const queues = await this.io.rabbit.getQueues();
     const availableDisplayNames: string[] = [];
-    queues.forEach(queue => {
-      if ((queue.state === 'running' || queue.state === 'live') && queue.name.indexOf('rpc-display-') > -1) {
+    queues.forEach((queue) => {
+      if (
+        (queue.state === 'running' || queue.state === 'live') &&
+        queue.name.indexOf('rpc-display-') > -1
+      ) {
         availableDisplayNames.push(queue.name);
       }
     });
@@ -268,12 +229,14 @@ export class DisplayWorker {
       command: 'get-display-bounds',
     };
     const _ps: any[] = [];
-    availableDisplayNames.forEach(dm => {
-      _ps.push(this.io.rabbit.publishRpc(dm, cmd).then(response => {
-        return response.content;
-      }));
+    availableDisplayNames.forEach((dm) => {
+      _ps.push(
+        this.io.rabbit.publishRpc(dm, cmd).then((response) => {
+          return response.content;
+        }),
+      );
     });
-    const bounds = (await Promise.all(_ps) as BoundsResponse[]);
+    const bounds = (await Promise.all(_ps)) as BoundsResponse[];
     const boundMap = new Map();
     for (const bound of bounds) {
       boundMap.set(bound.displayName, bound.bounds);
@@ -282,14 +245,17 @@ export class DisplayWorker {
   }
 
   /**
-  * list display contexts live in the environment.
-  * @returns {Promise} An array of String containing display context names.
-  */
+   * list display contexts live in the environment.
+   * @returns {Promise} An array of String containing display context names.
+   */
   async list(): Promise<string[]> {
     const qs = await this.io.rabbit.getQueues();
     const availableDisplayNames: string[] = [];
-    qs.forEach(queue => {
-      if ((queue.state === 'running' || queue.state === 'live') && queue.name.indexOf('rpc-display-') > -1) {
+    qs.forEach((queue) => {
+      if (
+        (queue.state === 'running' || queue.state === 'live') &&
+        queue.name.indexOf('rpc-display-') > -1
+      ) {
         availableDisplayNames.push(queue.name);
       }
     });
@@ -298,10 +264,12 @@ export class DisplayWorker {
       command: 'get-context-list',
     };
     const _ps: Promise<string[]>[] = [];
-    availableDisplayNames.forEach(dm => {
-      _ps.push(this.io.rabbit.publishRpc<string[]>(dm, cmd).then(response => {
-        return response.content;
-      }));
+    availableDisplayNames.forEach((dm) => {
+      _ps.push(
+        this.io.rabbit.publishRpc<string[]>(dm, cmd).then((response) => {
+          return response.content;
+        }),
+      );
     });
     const lists = await Promise.all(_ps);
     let contextList: string[] = [];
@@ -312,9 +280,9 @@ export class DisplayWorker {
   }
 
   /**
-  * gets the activelist display contexts.
-  * @returns {Promise} An array of String containing display context names.
-  */
+   * gets the activelist display contexts.
+   * @returns {Promise} An array of String containing display context names.
+   */
   async getActive(): Promise<DisplayContext> {
     const m = await this.io.redis.get('display:activeDisplayContext');
     if (m) {
@@ -324,30 +292,43 @@ export class DisplayWorker {
     }
 
     throw new Error('No display context is active');
-
   }
 
   /**
-  * sets a display context active. Making a display context active ensures only windows of the display context are visible. Windows from other display contexts are hidden.
-  * @param display_ctx_name - display context name.
-  * @param reset=false if the viewObjects of the displayContext need to be reloaded.
-  * @returns return false if the display context name is already active.
-  */
-  async setActive(displayContextName: string, reset = false): Promise<string | false> {
+   * sets a display context active. Making a display context active ensures only windows of the display context are visible. Windows from other display contexts are hidden.
+   * @param display_ctx_name - display context name.
+   * @param reset=false if the viewObjects of the displayContext need to be reloaded.
+   * @returns return false if the display context name is already active.
+   */
+  async setActive(
+    displayContextName: string,
+    reset = false,
+  ): Promise<string | false> {
     // since setState first gets old value and sets the new value at the sametime,
     // calling this function within multiple display workers ensures this function is executed only once.
-    const name = await this.io.redis.getset('display:activeDisplayContext', displayContextName);
+    const name = await this.io.redis.getset(
+      'display:activeDisplayContext',
+      displayContextName,
+    );
     if (name !== displayContextName) {
       // TODO
       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-      const m = await (new DisplayContext(this.io, displayContextName, {})).restoreFromDisplayWorkerStates(reset);
-      this.io.rabbit.publishTopic('display.displayContext.changed', {
-        type: 'displayContextChanged',
-        details: {
-          displayContext: displayContextName,
-          lastDisplayContext: name,
-        },
-      }).catch(() => { /* pass */ });
+      const m = await new DisplayContext(
+        this.io,
+        displayContextName,
+        {},
+      ).restoreFromDisplayWorkerStates(reset);
+      this.io.rabbit
+        .publishTopic('display.displayContext.changed', {
+          type: 'displayContextChanged',
+          details: {
+            displayContext: displayContextName,
+            lastDisplayContext: name,
+          },
+        })
+        .catch(() => {
+          /* pass */
+        });
       // TODO
       // eslint-disable-next-line @typescript-eslint/no-unsafe-return
       return m;
@@ -409,7 +390,10 @@ export class DisplayWorker {
   }
 }
   */
-  async create(displayContextName: string, windowSettings = {}): Promise<DisplayContext> {
+  async create(
+    displayContextName: string,
+    windowSettings = {},
+  ): Promise<DisplayContext> {
     const _dc = new DisplayContext(this.io, displayContextName, windowSettings);
     await _dc.restoreFromDisplayWorkerStates();
     await this.io.rabbit.publishTopic('display.displayContext.created', {
@@ -423,9 +407,9 @@ export class DisplayWorker {
   }
 
   /**
-  * hides all display contexts. If the display context already exists, it is made active and a DisplayContext Object is restored from store.
-  * @returns {Promise<Object>} A array of JSON object containing status of hide function execution at all display workers.
-  */
+   * hides all display contexts. If the display context already exists, it is made active and a DisplayContext Object is restored from store.
+   * @returns {Promise<Object>} A array of JSON object containing status of hide function execution at all display workers.
+   */
   async hideAll(): Promise<BaseResponse[]> {
     const cmd = {
       command: 'hide-all-windows',
@@ -433,7 +417,11 @@ export class DisplayWorker {
     const displays = await this.getDisplays();
     const _ps: Promise<BaseResponse>[] = [];
     for (const [k] of displays) {
-      _ps.push(this.io.rabbit.publishRpc<BaseResponse>(`rpc-display-${k}`, cmd).then(m => m.content));
+      _ps.push(
+        this.io.rabbit
+          .publishRpc<BaseResponse>(`rpc-display-${k}`, cmd)
+          .then((m) => m.content),
+      );
     }
     const m = await Promise.all(_ps);
     void this.io.redis.del('display:activeDisplayContext');
@@ -449,7 +437,10 @@ export class DisplayWorker {
     const cmd = {
       command: 'get-focus-window',
     };
-    const resp = await this.io.rabbit.publishRpc<FocusWindowResponse>(`rpc-display-${displayName}`, cmd);
+    const resp = await this.io.rabbit.publishRpc<FocusWindowResponse>(
+      `rpc-display-${displayName}`,
+      cmd,
+    );
     return resp.content;
   }
 
@@ -464,17 +455,31 @@ export class DisplayWorker {
     const displays = await this.getDisplays();
     const _ps: Promise<FocusWindowResponse>[] = [];
     for (const [k] of displays) {
-      _ps.push(this.io.rabbit.publishRpc<FocusWindowResponse>(`rpc-display-${k}`, cmd).then(m => m.content));
+      _ps.push(
+        this.io.rabbit
+          .publishRpc<FocusWindowResponse>(`rpc-display-${k}`, cmd)
+          .then((m) => m.content),
+      );
     }
     return Promise.all(_ps);
   }
 
-  private _on(topic: string, handler: (content: Buffer | string | number | object, response: RabbitMessage) => void): void {
-    this.io.rabbit.onTopic(topic, (response) => {
-      if (handler != null) {
-        handler((response.content as Buffer | string | number), response);
-      }
-    }).catch(() => { /* pass */ });
+  private _on(
+    topic: string,
+    handler: (
+      content: Buffer | string | number | object,
+      response: RabbitMessage,
+    ) => void,
+  ): void {
+    this.io.rabbit
+      .onTopic(topic, (response) => {
+        if (handler != null) {
+          handler(response.content as Buffer | string | number, response);
+        }
+      })
+      .catch(() => {
+        /* pass */
+      });
   }
 
   /**

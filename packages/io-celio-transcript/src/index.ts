@@ -22,8 +22,7 @@ export class Transcript {
   public constructor(io: Io) {
     if (!io.rabbit) {
       throw new Error('Must initialize RabbitMQ module for Io');
-    }
-    else if (!io.redis) {
+    } else if (!io.redis) {
       throw new Error('Must initialize Redis module for Io');
     }
     this.io = io;
@@ -36,7 +35,9 @@ export class Transcript {
    * @param  {transcriptSubscriptionCallback} handler - Function to respond the transcription results.
    */
   public onFinal(handler: CallbackHandler): void {
-    this.rabbit.onTopic('*.final.transcript', handler).catch(() => { /* pass */ });
+    this.rabbit.onTopic('*.final.transcript', handler).catch(() => {
+      /* pass */
+    });
   }
 
   /**
@@ -44,7 +45,9 @@ export class Transcript {
    * @param  {transcriptSubscriptionCallback} handler - Function to respond the transcription results.
    */
   public onInterim(handler: CallbackHandler): void {
-    this.rabbit.onTopic('*.interim.transcript', handler).catch(() => { /* pass */ });
+    this.rabbit.onTopic('*.interim.transcript', handler).catch(() => {
+      /* pass */
+    });
   }
 
   /**
@@ -52,7 +55,9 @@ export class Transcript {
    * @param  {transcriptSubscriptionCallback} handler - Function to respond the transcription results.
    */
   public onAll(handler: CallbackHandler): void {
-    this.rabbit.onTopic('*.*.transcript', handler).catch(() => { /* pass */ });
+    this.rabbit.onTopic('*.*.transcript', handler).catch(() => {
+      /* pass */
+    });
   }
 
   /**
@@ -60,7 +65,11 @@ export class Transcript {
    * @param  {string} model - The name of the model to switch to.
    */
   public switchModel(model: string): void {
-    this.rabbit.publishTopic('switchModel.transcript.command', model).catch(() => { /* pass */ });
+    this.rabbit
+      .publishTopic('switchModel.transcript.command', model)
+      .catch(() => {
+        /* pass */
+      });
   }
 
   /**
@@ -70,8 +79,15 @@ export class Transcript {
    * @param  {string} speakerName - The speaker name to tag.
    * @returns {Promise} A promise that resolves to {content: Buffer('done')}.
    */
-  public tagChannel(workerID: string, channelIndex: number, speakerName: string): Promise<RabbitMessage> {
-    return this.rabbit.publishRpc(`rpc-transcript-${workerID}-tagChannel`, { channelIndex, speaker: speakerName });
+  public tagChannel(
+    workerID: string,
+    channelIndex: number,
+    speakerName: string,
+  ): Promise<RabbitMessage> {
+    return this.rabbit.publishRpc(`rpc-transcript-${workerID}-tagChannel`, {
+      channelIndex,
+      speaker: speakerName,
+    });
   }
 
   /**
@@ -79,14 +95,18 @@ export class Transcript {
    * @param  {Array<string>} words - An array of keywords
    */
   public addKeywords(words: string[]): void {
-    this.redis.sadd('transcript:keywords', ...words).catch(() => { /* pass */ });
+    this.redis.sadd('transcript:keywords', ...words).catch(() => {
+      /* pass */
+    });
   }
 
   /**
    * Request all transcript workers to stop publishing. Useful for entering a privacy mode.
    */
   public stopPublishing(): void {
-    this.rabbit.publishTopic('stopPublishing.transcript.command').catch(() => { /* pass */ });
+    this.rabbit.publishTopic('stopPublishing.transcript.command').catch(() => {
+      /* pass */
+    });
   }
 
   /**
@@ -97,13 +117,24 @@ export class Transcript {
    * @param  {bool} isFinal - Indicates whether the result is final.
    * @param  {Object} msg - The transcript to publish.
    */
-  public publish(micType: string, isFinal: boolean, msg: Record<string, unknown>): void {
+  public publish(
+    micType: string,
+    isFinal: boolean,
+    msg: Record<string, unknown>,
+  ): void {
     if (!msg.time_captured) {
       // eslint-disable-next-line camelcase
       msg.time_captured = new Date().getTime();
     }
     msg.messageID = this.io.generateUuid();
-    this.rabbit.publishTopic(`${micType}.${isFinal ? 'final' : 'interim'}.transcript`, JSON.stringify(msg)).catch(() => { /* pass */ });
+    this.rabbit
+      .publishTopic(
+        `${micType}.${isFinal ? 'final' : 'interim'}.transcript`,
+        JSON.stringify(msg),
+      )
+      .catch(() => {
+        /* pass */
+      });
   }
 }
 

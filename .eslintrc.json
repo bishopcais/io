@@ -1,12 +1,17 @@
 {
   "extends": [
-    "@masterodin/eslint-config-typescript"
+    "@masterodin/eslint-config-typescript",
+    "prettier"
+  ],
+  "plugins": [
+    "prettier"
   ],
   "ignorePatterns": [
     "*.js"
   ],
   "rules": {
     "@typescript-eslint/ban-types": "warn",
-    "@typescript-eslint/explicit-member-accessibility": "off"
+    "@typescript-eslint/explicit-member-accessibility": "off",
+    "prettier/prettier": "error"
   }
 }

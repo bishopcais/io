@@ -1,6 +1,5 @@
 <p style="text-align: center"><img src="img/moon.svg" alt="drawing" width="400"/></p>
 
-
 # @cisl/io
 
 A framework for building distributed applications and the coolest of Jupiter's moons.
@@ -16,6 +15,7 @@ npm install @cisl/io
 ## Usage
 
 NodeJS
+
 ```js
 const io = require('@cisl/io')();
 // or through instantation of a new class
@@ -24,6 +24,7 @@ const io = new Io();
 ```
 
 TypeScript:
+
 ```typescript
 import io from '@cisl/io';
 // or through instantation of a new class
@@ -47,7 +48,9 @@ The core of `Io`, which is always available consists of the following methods:
 This function when calls, returns a v4 uuid string with dashes.
 
 ### RabbitMQ
+
 RabbitMQ requires the `rabbit` value to be set, where `true` will use the defaults below. Any field not set will use these defaults:
+
 ```json
 {
   "rabbit": {
@@ -63,9 +66,9 @@ RabbitMQ requires the `rabbit` value to be set, where `true` will use the defaul
 If you wish to enable SSL to communicate with RabbitMQ, you will need to set `rabbit.ssl` to `true`, and then define the following keys
 to point at filenames to read in:
 
-* cert
-* key
-* ca
+- cert
+- key
+- ca
 
 And optionally define a `passphrase` to use for the key file.
 
@@ -115,8 +118,9 @@ values for the `options` argument.
 For `publishTopic` and `publishRpc` allows taking in a variety of types, and internally parses it to
 a Buffer and setting the appropriate `content-type` before sending it along RabbitMQ. For example,
 calling:
+
 ```js
-io.rabbit.publishTopic('test', {'test': true});
+io.rabbit.publishTopic('test', { test: true });
 ```
 
 Will encode the JSON array into a Buffer and set the content-type appropriately to `application/json`.
@@ -131,13 +135,12 @@ the `options` value. Io will still handle automatic conversion
 of the value into a Buffer.
 
 | content-type             | value  |
-|--------------------------|--------|
+| ------------------------ | ------ |
 | text/string              | string |
 | text/number              | number |
 | application/json         | JSON   |
 | application/octet-stream | Buffer |
 | other                    | Buffer |
-
 
 #### Content-Type
 
@@ -169,6 +172,7 @@ documentation for additional details on using it.
   }
 }
 ```
+
 The above are the defaults that will be used if any are missing. See
 [ioredis#options](https://github.com/luin/ioredis/blob/HEAD/API.md#new-redisport-host-options) for
 the full list of options you can use when connecting the client.
@@ -186,6 +190,7 @@ console.log(io.redis.getBuiltinCommands());
 with several useful utility functions for interacting with it.
 
 To configure to the default setup, use `mongo: true`, or you can configure it for your needs using the following settings:
+
 ```json
 {
   "mongo": {

@@ -29,7 +29,7 @@ export class Io {
    * however the defaults should usually suffice in most cases.
    */
   public constructor(options?: CogLoaderOptions) {
-    this.config = new Config((loadCogFile(options) as IoCog));
+    this.config = new Config(loadCogFile(options) as IoCog);
 
     if (this.config.hasValue('mongo')) {
       this._mongo = new Mongo(this);
@@ -107,7 +107,10 @@ export class Io {
 /**
  * @internal
  */
-export function runRegisterFunctions(io: Io, registerFunctions: ((io: Io) => void)[]): void {
+export function runRegisterFunctions(
+  io: Io,
+  registerFunctions: ((io: Io) => void)[],
+): void {
   for (const registerFunction of registerFunctions) {
     registerFunction(io);
   }
@@ -116,6 +119,8 @@ export function runRegisterFunctions(io: Io, registerFunctions: ((io: Io) => voi
 /**
  * @internal
  */
-export function registerPlugins(...registerFunctions: ((io: Io) => void)[]): void {
+export function registerPlugins(
+  ...registerFunctions: ((io: Io) => void)[]
+): void {
   registeredFunctions.push(...registerFunctions);
 }

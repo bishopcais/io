@@ -1,11 +1,16 @@
 {
   "$schema": "https://typedoc.org/schema.json",
-  "exclude": [
-    "dist"
+  "exclude": ["dist"],
+  "entryPoints": [
+    "src/index.ts",
+    "src/io.ts",
+    "src/rabbit.ts",
+    "src/redis.ts",
+    "src/mongo.ts",
+    "src/config.ts",
+    "src/types.ts"
   ],
-  "entryPoints": ["src/index.ts", "src/io.ts", "src/rabbit.ts", "src/redis.ts", "src/mongo.ts", "src/config.ts", "src/types.ts"],
-  "plugin": [
-  ],
+  "plugin": [],
   "readme": "README.md",
   "excludeInternal": true,
   "sort": ["source-order"]

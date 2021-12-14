@@ -37,11 +37,16 @@ export class Redis extends RedisClient {
    * @param  {function} handler - Callback function to handle the change event
    * @returns {any} - The subscriber. Use subsriber.unsubscribe((err, result)=>{}) to unsubscribe.
    */
-  public onChange(key: string, handler: (event: unknown) => void): RedisClient.Redis {
+  public onChange(
+    key: string,
+    handler: (event: unknown) => void,
+  ): RedisClient.Redis {
     const keyChannel = `__keyspace@${this.options.db}__:${key}`;
 
     const subscriber = this.duplicate();
-    subscriber.subscribe(keyChannel).catch(() => { /* pass */ });
+    subscriber.subscribe(keyChannel).catch(() => {
+      /* pass */
+    });
     subscriber.on('message', (channel, event): void => {
       if (channel === keyChannel) {
         handler(event);

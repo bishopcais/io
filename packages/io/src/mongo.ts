@@ -68,7 +68,9 @@ export class Mongo {
       options.pass = this.options.pass;
     }
 
-    this.mongoose.connect(connString, options).catch(() => { /* pass */ });
+    this.mongoose.connect(connString, options).catch(() => {
+      /* pass */
+    });
 
     this.mongoose.connection.on('error', (err): void => {
       console.error('MongoDB connection error.');
@@ -84,7 +86,10 @@ export class Mongo {
    * @param name - The name of the model
    * @param schema - The schema of the model
    */
-  public model<T extends Document>(name: string, schema: mongoose.Schema): Model<T> {
+  public model<T extends Document>(
+    name: string,
+    schema: mongoose.Schema,
+  ): Model<T> {
     return this.mongoose.model<T>(name, schema);
   }
 

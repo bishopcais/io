@@ -5,11 +5,9 @@
     "outDir": "./dist",
     "paths": {
       "@cisl/io": ["../io/src"],
-      "@cisl/io/*": ["../io/src/*"],
+      "@cisl/io/*": ["../io/src/*"]
     }
   },
 
-  "include": [
-    "src/**/*"
-  ]
+  "include": ["src/**/*"]
 }

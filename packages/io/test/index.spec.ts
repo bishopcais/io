@@ -18,14 +18,14 @@ test('calling twice with no options returns same instance', () => {
 
 test('calling with different options returns different instances', () => {
   const io = loadIo();
-  const io2 = loadIo({override: false});
+  const io2 = loadIo({ override: false });
   expect(io).toBeInstanceOf(Io);
   expect(io).toBeInstanceOf(Io);
   expect(io2).not.toBe(io);
 });
 
 test('calling with options then no options returns same instance', () => {
-  const io = loadIo({override: false});
+  const io = loadIo({ override: false });
   const io2 = loadIo();
   expect(io).toBeInstanceOf(Io);
   expect(io2).toBeInstanceOf(Io);

@@ -2,10 +2,21 @@ import { Io } from '@cisl/io/io';
 import isEmpty from 'lodash.isempty';
 
 import { DisplayWindow } from './display-window';
-import { ViewObject, ViewObjectOptions, ViewObjectRequestResponse } from './view-object';
+import {
+  ViewObject,
+  ViewObjectOptions,
+  ViewObjectRequestResponse,
+} from './view-object';
 import { RabbitMessage } from '@cisl/io/types';
 
-import { DisplayOptions, DisplayResponse, DisplayUrlOptions, ResponseContent, Window, WindowOptions } from './types';
+import {
+  DisplayOptions,
+  DisplayResponse,
+  DisplayUrlOptions,
+  ResponseContent,
+  Window,
+  WindowOptions,
+} from './types';
 
 /**
  * @typedef {Promise.<Object>} display_rpc_result
@@ -54,7 +65,7 @@ import { DisplayOptions, DisplayResponse, DisplayUrlOptions, ResponseContent, Wi
  * @property {Number} [videoOptions.currentTime] - Specify the video play position in seconds(default 0.0)
  * @property {Number} [videoOptions.volume] - Specify the current volume from (0.0 - muted) to (1.0 - full volume) (default: 1.0)
  * @property {Number} [videoOptions.preload] - Specify the current video preload ('auto' | 'metadata' | 'none') (default: 'auto')
-*/
+ */
 
 interface ContextWindowSettings extends WindowOptions {
   windowName: string;
@@ -104,11 +115,11 @@ export class DisplayContext {
   private displayWorkerQuitHandler?: (obj: QuitHandlerObj) => void;
 
   /**
-  * Creates an instance of DisplayContext.
-  * @param {String} name Display context name
-  * @param {Object.<String, window_settings>} windowSettings - a collection of named window settings
-  * @param {Object} io CELIO object instance
-  */
+   * Creates an instance of DisplayContext.
+   * @param {String} name Display context name
+   * @param {Object.<String, window_settings>} windowSettings - a collection of named window settings
+   * @param {Object} io CELIO object instance
+   */
   constructor(io: Io, name: string, settings: DisplayOptions) {
     if (!io.rabbit) {
       throw new Error('could not find RabbitMQ instance');
@@ -120,23 +131,28 @@ export class DisplayContext {
 
     this.displayNames = new Set();
 
-    this.settings = Object.keys(settings).reduce<DisplayContextSettings>((acc, key) => {
-      acc[key] = {
-        ...settings[key],
-        windowName: key,
-        displayName: settings[key].displayName || key,
-      };
+    this.settings = Object.keys(settings).reduce<DisplayContextSettings>(
+      (acc, key) => {
+        acc[key] = {
+          ...settings[key],
+          windowName: key,
+          displayName: settings[key].displayName || key,
+        };
 
-      this.displayNames.add(acc[key].displayName);
+        this.displayNames.add(acc[key].displayName);
 
-      return acc;
-    }, {});
+        return acc;
+      },
+      {},
+    );
 
-    this.io.rabbit.onTopic('display.removed', (response) => {
-      this._clean((response.content as string));
-    }).catch((err) => {
-      console.error('Failed to remove display', err);
-    });
+    this.io.rabbit
+      .onTopic('display.removed', (response) => {
+        this._clean(response.content as string);
+      })
+      .catch((err) => {
+        console.error('Failed to remove display', err);
+      });
 
     this.io.rabbit.onQueueDeleted((queueName) => {
       if (this.validQueue(queueName)) {
@@ -147,7 +163,10 @@ export class DisplayContext {
   }
 
   private validQueue(queueName: string): boolean {
-    return (queueName.indexOf('rpc-display-') > -1) && this.displayNames.has(queueName.replace('rpc-display-', ''));
+    return (
+      queueName.indexOf('rpc-display-') > -1 &&
+      this.displayNames.has(queueName.replace('rpc-display-', ''))
+    );
   }
 
   _clean(closedDisplay: string): void {
@@ -157,14 +176,14 @@ export class DisplayContext {
         closedWindows.push(k);
       }
     }
-    closedWindows.forEach(w => this.displayWindows.delete(w));
+    closedWindows.forEach((w) => this.displayWindows.delete(w));
     const vboToRemove: string[] = [];
     for (const [k, v] of this.viewObjects) {
       if (v.displayName === closedDisplay) {
         vboToRemove.push(k);
       }
     }
-    vboToRemove.forEach(v => this.viewObjects.delete(v));
+    vboToRemove.forEach((v) => this.viewObjects.delete(v));
 
     if (this.displayWorkerQuitHandler) {
       const obj = {
@@ -177,8 +196,14 @@ export class DisplayContext {
   }
 
   async _postRequest<T = any>(displayName: string, data): Promise<T> {
-    const response = await this.io.rabbit.publishRpc(`rpc-display-${displayName}`, data);
-    if (Buffer.isBuffer(response.content) || typeof response.content !== 'object') {
+    const response = await this.io.rabbit.publishRpc(
+      `rpc-display-${displayName}`,
+      data,
+    );
+    if (
+      Buffer.isBuffer(response.content) ||
+      typeof response.content !== 'object'
+    ) {
       throw new Error('Invalid response type');
     }
     return response.content as unknown as T;
@@ -206,7 +231,7 @@ export class DisplayContext {
     this.viewObjects.clear();
     let windowCount = 0;
 
-    states.forEach(state => {
+    states.forEach((state) => {
       if (state.context !== this.name) {
         return;
       }
@@ -214,10 +239,13 @@ export class DisplayContext {
         for (const k of Object.keys(state.windows)) {
           const opts = state.windows[k];
           windowCount++;
-          this.displayWindows.set(k, new DisplayWindow(this.io, {
-            ...opts,
-            displayContext: this,
-          }));
+          this.displayWindows.set(
+            k,
+            new DisplayWindow(this.io, {
+              ...opts,
+              displayContext: this,
+            }),
+          );
         }
       }
       if (state.viewObjects) {
@@ -230,7 +258,7 @@ export class DisplayContext {
               displayContextName: this.name,
               windowName: wn.windowName,
             };
-            this.viewObjects.set(k, new ViewObject(this.io, opts));
+            this.viewObjects.set(k, new ViewObject(this.io, wn, opts));
           }
         }
       }
@@ -240,8 +268,7 @@ export class DisplayContext {
       // initialize display context from options
       const bounds = await this.getWindowBounds();
       return this.initialize(bounds);
-    }
-    else if (reset) {
+    } else if (reset) {
       // making it active and reloading
       await this.show();
       const m = await this.reloadAll();
@@ -252,24 +279,36 @@ export class DisplayContext {
     return this.show();
   }
 
-  async _executeInAvailableDisplays<T = any>(cmd: { command: string; options: { context: string }}): Promise<T[]> {
+  async _executeInAvailableDisplays<T = any>(cmd: {
+    command: string;
+    options: { context: string };
+  }): Promise<T[]> {
     const qs = await this.io.rabbit.getQueues();
     const availableDisplayNames: string[] = [];
-    qs.forEach(queue => {
-      if ((queue.state === 'running' || queue.state === 'live') && this.validQueue(queue.name)) {
+    qs.forEach((queue) => {
+      if (
+        (queue.state === 'running' || queue.state === 'live') &&
+        this.validQueue(queue.name)
+      ) {
         availableDisplayNames.push(queue.name);
       }
     });
 
     if (availableDisplayNames.length === 0) {
-      return Promise.reject(new Error(`No display-worker found while executing: ${JSON.stringify(cmd)}`));
+      return Promise.reject(
+        new Error(
+          `No display-worker found while executing: ${JSON.stringify(cmd)}`,
+        ),
+      );
     }
 
     const _ps: Promise<T>[] = [];
-    availableDisplayNames.forEach(dm => {
-      _ps.push(this.io.rabbit.publishRpc(dm, cmd).then(response => {
-        return (response.content as T);
-      }));
+    availableDisplayNames.forEach((dm) => {
+      _ps.push(
+        this.io.rabbit.publishRpc(dm, cmd).then((response) => {
+          return response.content as T;
+        }),
+      );
     });
     return Promise.all(_ps);
   }
@@ -290,7 +329,9 @@ export class DisplayContext {
         context: this.name,
       },
     };
-    const bounds = await this._executeInAvailableDisplays<Record<string, ContextWindowSettings>>(cmd);
+    const bounds = await this._executeInAvailableDisplays<
+      Record<string, ContextWindowSettings>
+    >(cmd);
 
     const boundMap: DisplayContextSettings = {};
     for (let x = 0; x < bounds.length; x++) {
@@ -359,10 +400,12 @@ export class DisplayContext {
   }
 
   /**
-  * closes all windows of a display context
-  * @returns {display_rpc_result} returns a status object
-  */
-  async close(): Promise<{ status: string; command: string; displayName: string }[]> {
+   * closes all windows of a display context
+   * @returns {display_rpc_result} returns a status object
+   */
+  async close(): Promise<
+    { status: string; command: string; displayName: string }[]
+  > {
     const cmd = {
       command: 'close-display-context',
       options: {
@@ -387,30 +430,38 @@ export class DisplayContext {
     if (!isHidden) {
       this.displayWindows.clear();
       this.viewObjects.clear();
-      this.io.redis.get('display:activeDisplayContext').then(x => {
-        if (x === this.name) {
-          // clearing up active display context in store
-          this.io.redis.del('display:activeDisplayContext').catch(() => {
-            // ignore
-          });
-        }
-      }).catch(() => {
-        // ignore
-      });
-      this.io.rabbit.publishTopic('display.displayContext.closed', JSON.stringify({
-        'type': 'displayContextClosed',
-        'details': m,
-      })).catch(() => {
-        // ignore
-      });
+      this.io.redis
+        .get('display:activeDisplayContext')
+        .then((x) => {
+          if (x === this.name) {
+            // clearing up active display context in store
+            this.io.redis.del('display:activeDisplayContext').catch(() => {
+              // ignore
+            });
+          }
+        })
+        .catch(() => {
+          // ignore
+        });
+      this.io.rabbit
+        .publishTopic(
+          'display.displayContext.closed',
+          JSON.stringify({
+            type: 'displayContextClosed',
+            details: m,
+          }),
+        )
+        .catch(() => {
+          // ignore
+        });
     }
     return m;
   }
 
   /**
-  * reloads all viewObjects of a display context
-  * @returns {display_rpc_result} returns a status object
-  */
+   * reloads all viewObjects of a display context
+   * @returns {display_rpc_result} returns a status object
+   */
   reloadAll(): Promise<ViewObjectRequestResponse[]> {
     const _ps: Promise<ViewObjectRequestResponse>[] = [];
     for (const viewObject of this.viewObjects.values()) {
@@ -420,9 +471,13 @@ export class DisplayContext {
     return Promise.all(_ps);
   }
 
-  async initialize(options: DisplayContextSettings): Promise<Record<string, InitializeReturn>> {
+  async initialize(
+    options: DisplayContextSettings,
+  ): Promise<Record<string, InitializeReturn>> {
     if (isEmpty(options)) {
-      throw new Error('Cannot initialize display context without proper window_settings.');
+      throw new Error(
+        'Cannot initialize display context without proper window_settings.',
+      );
     }
 
     await this.show();
@@ -436,25 +491,33 @@ export class DisplayContext {
           template: 'index.html',
         },
       };
-      _ps.push(this._postRequest<InitializeResponse>(options[k].displayName, cmd));
+      _ps.push(
+        this._postRequest<InitializeResponse>(options[k].displayName, cmd),
+      );
     }
     const m = await Promise.all(_ps);
-    const map: Record<string, InitializeResponse & { displayContext: DisplayContext }> = {};
+    const map: Record<
+      string,
+      InitializeResponse & { displayContext: DisplayContext }
+    > = {};
     for (let i = 0; i < m.length; i++) {
       map[m[i].windowName] = {
         ...m[i],
         displayContext: this,
       };
-      this.displayWindows.set(m[i].windowName, new DisplayWindow(this.io, map[m[i].windowName]));
+      this.displayWindows.set(
+        m[i].windowName,
+        new DisplayWindow(this.io, map[m[i].windowName]),
+      );
     }
     return map;
   }
 
   /**
-  * gets a viewObject
-  * @param {String} id - an uuid of the viewobject
-  * @returns {ViewObject} returns the ViewObject instance
-  */
+   * gets a viewObject
+   * @param {String} id - an uuid of the viewobject
+   * @returns {ViewObject} returns the ViewObject instance
+   */
   getViewObject(id: string): ViewObject {
     const viewObject = this.viewObjects.get(id);
     if (!viewObject) {
@@ -464,9 +527,9 @@ export class DisplayContext {
   }
 
   /**
-    * gets all viewObjects
-    * @returns {Map.<String, ViewObject>} returns the collection of ViewObject instances
-    */
+   * gets all viewObjects
+   * @returns {Map.<String, ViewObject>} returns the collection of ViewObject instances
+   */
   getViewObjects(): Map<string, ViewObject> {
     return this.viewObjects;
   }
@@ -482,7 +545,7 @@ export class DisplayContext {
       _ps.push(v.capture());
       _dispNames.push(k);
     }
-    return Promise.all(_ps).then(m => {
+    return Promise.all(_ps).then((m) => {
       const resMap = new Map();
       for (let i = 0; i < m.length && i < _dispNames.length; i++) {
         resMap.set(_dispNames[i], m[i]);
@@ -497,7 +560,10 @@ export class DisplayContext {
    * @param {String} [windowName='main'] - window name
    * @returns {Promise<ViewObject>} returns the ViewObject instance
    */
-  async createViewObject(options: ViewObjectOptions, windowName = 'main'): Promise<ViewObject> {
+  async createViewObject(
+    options: ViewObjectOptions,
+    windowName = 'main',
+  ): Promise<ViewObject> {
     const displayWindow = this.displayWindows.get(windowName);
     if (!displayWindow) {
       throw new Error('Invalid window name');
@@ -514,10 +580,19 @@ export class DisplayContext {
     return viewObject;
   }
 
-  public async displayUrl(windowName: string, url: string, options: DisplayUrlOptions): Promise<ViewObject> {
-    const uniformGridCellSize = await this.displayWindows.get(windowName).getUniformGridCellSize();
+  public async displayUrl(
+    windowName: string,
+    url: string,
+    options: DisplayUrlOptions,
+  ): Promise<ViewObject> {
+    const uniformGridCellSize = await this.displayWindows
+      .get(windowName)
+      .getUniformGridCellSize();
 
-    if ((options.width === undefined || options.height === undefined) && uniformGridCellSize === undefined) {
+    if (
+      (options.width === undefined || options.height === undefined) &&
+      uniformGridCellSize === undefined
+    ) {
       throw new Error('Uniform grid cell size must be initialized');
     }
 
@@ -528,72 +603,99 @@ export class DisplayContext {
       throw new Error('height or heightFactor is required');
     }
 
-    return await this.createViewObject({
-      nodeIntegration: false,
-      uiDraggable: true,
-      uiClosable: true,
-      ...(options.top === undefined && options.left === undefined ? {
-        position: {
-          gridLeft: 1,
-          gridTop: 1,
-        },
-      } : {}),
-      ...options,
-      width:
-        options.width !== undefined
-          ? (typeof options.width === 'string' ? options.width : `${options.width}px`)
-          : `${options.widthFactor * uniformGridCellSize.width}px`,
-      height:
-        options.height !== undefined
-          ? (typeof options.height === 'string' ? options.height : `${options.height}px`)
-          : `${options.heightFactor * uniformGridCellSize.height}px`,
-      url,
-    }, windowName);
+    return await this.createViewObject(
+      {
+        nodeIntegration: false,
+        uiDraggable: true,
+        uiClosable: true,
+        ...(options.top === undefined && options.left === undefined
+          ? {
+              position: {
+                gridLeft: 1,
+                gridTop: 1,
+              },
+            }
+          : {}),
+        ...options,
+        width:
+          options.width !== undefined
+            ? typeof options.width === 'string'
+              ? options.width
+              : `${options.width}px`
+            : `${options.widthFactor * uniformGridCellSize.width}px`,
+        height:
+          options.height !== undefined
+            ? typeof options.height === 'string'
+              ? options.height
+              : `${options.height}px`
+            : `${options.heightFactor * uniformGridCellSize.height}px`,
+        url,
+      },
+      windowName,
+    );
   }
 
   /**
    * DisplayContext closed event
    * @param {displayContextClosedEventCallback} handler - event handler
    */
-  onClosed(handler: (content: ResponseContent, response: RabbitMessage) => void): void {
-    this.io.rabbit.onTopic('display.displayContext.closed', (response) => {
-      if (handler != null) {
-        const content = (response.content as ResponseContent);
-        if (content.details.closedDisplayContextName === this.name) {
-          handler(content, response);
+  onClosed(
+    handler: (content: ResponseContent, response: RabbitMessage) => void,
+  ): void {
+    this.io.rabbit
+      .onTopic('display.displayContext.closed', (response) => {
+        if (handler != null) {
+          const content = response.content as ResponseContent;
+          if (content.details.closedDisplayContextName === this.name) {
+            handler(content, response);
+          }
         }
-      }
-    }).catch(() => { /* pass */ });
+      })
+      .catch(() => {
+        /* pass */
+      });
   }
 
   /**
    * DisplayContext changed event
    * @param {displayContextChangedEventCallback} handler - event handler
    */
-  onActivated(handler: (content: ResponseContent, response: RabbitMessage) => void): void {
-    this.io.rabbit.onTopic('display.displayContext.changed', (response) => {
-      if (handler != null) {
-        const content = (response.content as ResponseContent);
-        if (content.details.displayContext === this.name) {
-          handler(content, response);
+  onActivated(
+    handler: (content: ResponseContent, response: RabbitMessage) => void,
+  ): void {
+    this.io.rabbit
+      .onTopic('display.displayContext.changed', (response) => {
+        if (handler != null) {
+          const content = response.content as ResponseContent;
+          if (content.details.displayContext === this.name) {
+            handler(content, response);
+          }
         }
-      }
-    }).catch(() => { /* pass */ });
+      })
+      .catch(() => {
+        /* pass */
+      });
   }
 
   /**
    * DisplayContext changed event
    * @param {displayContextChangedEventCallback} handler - event handler
    */
-  onDeactivated(handler: (content: ResponseContent, response: RabbitMessage) => void): void {
-    this.io.rabbit.onTopic('display.displayContext.changed', (response) => {
-      if (handler != null) {
-        const content = (response.content as ResponseContent);
-        if (content.details.lastDisplayContext === this.name) {
-          handler(content, response);
+  onDeactivated(
+    handler: (content: ResponseContent, response: RabbitMessage) => void,
+  ): void {
+    this.io.rabbit
+      .onTopic('display.displayContext.changed', (response) => {
+        if (handler != null) {
+          const content = response.content as ResponseContent;
+          if (content.details.lastDisplayContext === this.name) {
+            handler(content, response);
+          }
         }
-      }
-    }).catch(() => { /* pass */ });
+      })
+      .catch(() => {
+        /* pass */
+      });
   }
 
   /**

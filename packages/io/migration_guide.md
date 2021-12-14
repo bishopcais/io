@@ -15,9 +15,9 @@ The biggest thing is that outside of the [core functionality](README.md#Core),
 everything else is a "plugin", and accessed via its own key off the primary
 object. `@cisl/io` comes with three built-in plugins:
 
-* RabbitMQ (accessed through `io.rabbit`) [README.md#rabbitmq](README.md#rabbitmq)
-* Redis (accessed through `io.redis`) [README.md#redis](README.md#redis)
-* MongoDB (accessed through `io.mongo`) [README.md#mongo](README.md#mongo)
+- RabbitMQ (accessed through `io.rabbit`) [README.md#rabbitmq](README.md#rabbitmq)
+- Redis (accessed through `io.redis`) [README.md#redis](README.md#redis)
+- MongoDB (accessed through `io.mongo`) [README.md#mongo](README.md#mongo)
 
 Adding additional plugins is as easy as installing them through `npm` and then
 loading them. See the [README.md#registering-plugins](README.md#registering-plugins)
@@ -51,13 +51,12 @@ The `oldHandler` was a callback which had the signature: `(content: Buffer, head
 where the first argument is the payload and the second is information about the
 message (which is a fusion of its fields and properties).
 
-
 The `newHandler` callback looks like `(message: {content: Buffer|json|string|number, fields: object, properties: object})`.
 The `content` field will be returned based on the set `content-type` of the
 caller. When receiving content from `celio` then, the `content-type` will not
 be set and `content` will be of type `Buffer`. When coming from `cislio`, the
 `content-type` is set automatically and so then `content` will correspond to
-what to send into rabbit via the `publishTopic` method. You can use the middle 
+what to send into rabbit via the `publishTopic` method. You can use the middle
 optional `[options]` argument to set a `content-type` to force, which allows
 for interopability between `@cel/io` and `@cisl/io`. Once you are certain that
 all incoming information is from something that utilizes `content-type` field, then
@@ -69,14 +68,18 @@ Translation would then therefore be something like this:
 
 ```javascript
 celio.onTopic('example-queue', (content) => {
-    const msg = JSON.parse(content.toString());
+  const msg = JSON.parse(content.toString());
 });
 
 // translates to
 
-cislio.rabbit.onTopic('example-queue', {contentType: 'application/json'}, (msg) => {
+cislio.rabbit.onTopic(
+  'example-queue',
+  { contentType: 'application/json' },
+  (msg) => {
     const msg = message.content;
-});
+  },
+);
 ```
 
 ### celio.publishTopic(topic, oldContent[, options]) -> cislio.rabbit.publishTopic(topic, newContent[, options])
@@ -152,14 +155,16 @@ The translation would be:
 
 ```javascript
 celio.call('rpc-queue', JSON.stringify(obj)).then((message) => {
-    const msg = JSON.parse(message.content.toString());
+  const msg = JSON.parse(message.content.toString());
 });
 
 // translates to
 
-cislio.rabbit.publishRpc('rpc-queue', obj, {contentType: 'application-json'}).then((msg) => {
+cislio.rabbit
+  .publishRpc('rpc-queue', obj, { contentType: 'application-json' })
+  .then((msg) => {
     const msg = message.content;
-});
+  });
 ```
 
 ## Redis
@@ -188,14 +193,23 @@ you will need to rename the key in the `cog.json` file from `store` to `redis`.
 the README for full instructions on configuration values.
 
 ### celio.store.addToHash(key, field, value) -> cislio.redis.hset(key, field, value)
+
 ### celio.store.getHash(key) -> cislio.redis.hgetall(key)
+
 ### celio.store.getHashField(key, field) -> cislio.redis.hget(key, field)
+
 ### celio.store.removeFromHash(key, field) -> cislio.redis.hdel(key, field)
+
 ### celio.store.addToSet(key, ...values) -> cislio.redis.sadd(key, values)
+
 ### celio.store.getSet(key) -> cislio.redis.smembers(key)
+
 ### celio.store.removeFromSet(key, val) -> cislio.redis.srem(key, val)
+
 ### celio.store.setState(key, value) -> cislio.redis.getset(key, value)
+
 ### celio.store.getState(key) -> cislio.redis.get(key)
+
 ### celio.store.del(key) -> cislio.redis.del(key)
 
 ## speaker-worker plugin
@@ -224,7 +238,7 @@ and then usage remains the same through `cisl.transcript` namespace. See
 
 ## display-worker plugin
 
-__NOTE:__ Probably not ready until moving to
+**NOTE:** Probably not ready until moving to
 [bishopcais/display-worker](https://github.com/bishopcais/display-worker).
 
 The `display-worker` plugin is now a separate plugin that is installable from

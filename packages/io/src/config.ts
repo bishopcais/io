@@ -23,11 +23,14 @@ export class Config {
     if (pieces.length === 1 && pieces[0] === '') {
       throw new Error('Search key cannot be empty');
     }
-    let value = this._config as {[key: string]: unknown};
+    let value = this._config as { [key: string]: unknown };
 
     while (pieces.length > 0) {
       let i = 0;
-      while (!(pieces.slice(0, pieces.length - i).join(':') in value) && i < pieces.length) {
+      while (
+        !(pieces.slice(0, pieces.length - i).join(':') in value) &&
+        i < pieces.length
+      ) {
         i++;
       }
       if (i >= pieces.length) {
@@ -37,18 +40,19 @@ export class Config {
         }
         throw new Error(`Could not find key: ${key}`);
       }
-      value = value[pieces.splice(0, pieces.length - i).join(':')] as {[key: string]: unknown};
+      value = value[pieces.splice(0, pieces.length - i).join(':')] as {
+        [key: string]: unknown;
+      };
     }
 
-    return ((value as unknown) as T);
+    return value as unknown as T;
   }
 
   public has(key: string): boolean {
     try {
       this.get(key);
       return true;
-    }
-    catch {
+    } catch {
       return false;
     }
   }
@@ -58,19 +62,24 @@ export class Config {
     return value !== false && value !== null && value !== undefined;
   }
 
-  public defaults(defaults: {[key: string]: unknown}): void {
+  public defaults(defaults: { [key: string]: unknown }): void {
     this._config = Config.recursiveDefaults(this._config, defaults);
   }
 
-  private static recursiveDefaults(config: {[key: string]: unknown}, defaults: {[key: string]: unknown}): {[key: string]: unknown} {
+  private static recursiveDefaults(
+    config: { [key: string]: unknown },
+    defaults: { [key: string]: unknown },
+  ): { [key: string]: unknown } {
     for (const key in defaults) {
       if (!(key in config) || config[key] === true) {
         config[key] = defaults[key];
-      }
-      else if (typeof config[key] === 'object' && typeof defaults[key] === 'object') {
+      } else if (
+        typeof config[key] === 'object' &&
+        typeof defaults[key] === 'object'
+      ) {
         config[key] = this.recursiveDefaults(
-          (config[key] as {[key: string]: unknown}),
-          (defaults[key] as {[key: string]: unknown}),
+          config[key] as { [key: string]: unknown },
+          defaults[key] as { [key: string]: unknown },
         );
       }
     }
@@ -83,8 +92,7 @@ export class Config {
         if (!this.get(key)) {
           throw new Error();
         }
-      }
-      catch {
+      } catch {
         throw new Error(`Value required for key: ${key}`);
       }
     }

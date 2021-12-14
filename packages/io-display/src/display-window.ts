@@ -44,19 +44,19 @@ interface UniformGridOptions {
 }
 
 /*
-  * @param {String} options.url
-  * @param {Object|String} [options.position]
-  * @param {Number} options.position.gridTop
-  * @param {Number} options.position.gridLeft
-  * @param {String} options.width - in pixels or em
-  * @param {String} options.height - in pixels or em
-  * @param {boolean} options.nodeintegration
-  * @param {String} options.cssText
-  * @param {boolean} options.uiDraggable
-  * @param {boolean} options.uiClosable
-  * @param {object} options.deviceEmulation
-  * @param {Number} options.deviceEmulation.scale
-*/
+ * @param {String} options.url
+ * @param {Object|String} [options.position]
+ * @param {Number} options.position.gridTop
+ * @param {Number} options.position.gridLeft
+ * @param {String} options.width - in pixels or em
+ * @param {String} options.height - in pixels or em
+ * @param {boolean} options.nodeintegration
+ * @param {String} options.cssText
+ * @param {boolean} options.uiDraggable
+ * @param {boolean} options.uiClosable
+ * @param {object} options.deviceEmulation
+ * @param {Number} options.deviceEmulation.scale
+ */
 
 interface CloseReturn extends GenericObject {
   viewObjects: string[];
@@ -85,6 +85,8 @@ export class DisplayWindow {
 
   public displayName: string;
 
+  public uniformGridCellSize: UniformGridCellSize;
+
   constructor(io: Io, options: DisplayWindowOptions) {
     if (!io.rabbit) {
       throw new Error('could not find RabbitMQ instance');
@@ -93,15 +95,21 @@ export class DisplayWindow {
     this.windowName = options.windowName;
     this.displayName = options.displayName;
     this.displayContext = options.displayContext;
+    this.uniformGridCellSize = null;
   }
 
   _postRequest<T = object>(data: object): Promise<T> {
-    return this.io.rabbit.publishRpc(`rpc-display-${this.displayName}`, data).then((response: RabbitMessage) => {
-      if (Buffer.isBuffer(response.content) || typeof response.content !== 'object') {
-        throw new Error('invalid response content');
-      }
-      return (response.content as unknown) as T;
-    });
+    return this.io.rabbit
+      .publishRpc(`rpc-display-${this.displayName}`, data)
+      .then((response: RabbitMessage) => {
+        if (
+          Buffer.isBuffer(response.content) ||
+          typeof response.content !== 'object'
+        ) {
+          throw new Error('invalid response content');
+        }
+        return response.content as unknown as T;
+      });
   }
 
   id(): string {
@@ -195,7 +203,11 @@ export class DisplayWindow {
    * @param {String} backgroundStyle
    * @returns {display_rpc_result}
    */
-  addToGrid(label: string, bounds: {left: string; top: string; width: string; height: string}, backgroundStyle: string): Promise<object> {
+  addToGrid(
+    label: string,
+    bounds: { left: string; top: string; width: string; height: string },
+    backgroundStyle: string,
+  ): Promise<object> {
     const cmd = {
       command: 'add-to-grid',
       options: {
@@ -242,14 +254,17 @@ export class DisplayWindow {
    * gets the cell size of the uniform content grid
    * @returns {{width : Number, height : Number }}
    */
-  getUniformGridCellSize(): Promise<UniformGridCellSize> {
+  async getUniformGridCellSize(): Promise<UniformGridCellSize> {
     const cmd = {
       command: 'uniform-grid-cell-size',
       options: {
         windowName: this.windowName,
       },
     };
-    return this._postRequest<UniformGridCellSize>(cmd);
+    this.uniformGridCellSize = await this._postRequest<UniformGridCellSize>(
+      cmd,
+    );
+    return this.uniformGridCellSize;
   }
 
   /**
@@ -261,7 +276,11 @@ export class DisplayWindow {
    * @param {Object} animation - based on W3 animation API
    * @returns {display_rpc_result}
    */
-  setCellStyle(label: string, style: string, animation?: object): Promise<object> {
+  setCellStyle(
+    label: string,
+    style: string,
+    animation?: object,
+  ): Promise<object> {
     const cmd = {
       command: 'cell-style',
       options: {
@@ -385,39 +404,45 @@ export class DisplayWindow {
         windowName: this.windowName,
       },
     };
-    const response = await this.io.rabbit.publishRpc(`rpc-display-${this.displayName}`, cmd);
-    if (Buffer.isBuffer(response.content) || typeof response.content !== 'object') {
+    const response = await this.io.rabbit.publishRpc(
+      `rpc-display-${this.displayName}`,
+      cmd,
+    );
+    if (
+      Buffer.isBuffer(response.content) ||
+      typeof response.content !== 'object'
+    ) {
       throw new Error('invalid response type');
     }
     return response.content;
   }
 
   /**
-  * Creates a view object in the window
-  *
-  * options:
-  *  - url
-  *  - position (label or grid-top & gridLeft)
-  *  - width // in px or em
-  *  - height // in px or em
-  *  - cssText (string)
-  *  - nodeintegration (boolean)
-  *
-  * @param {Object} options
-  * @param {String} options.url
-  * @param {Object|String} [options.position]
-  * @param {Number} options.position.gridTop
-  * @param {Number} options.position.gridLeft
-  * @param {String} options.width - in pixels or em
-  * @param {String} options.height - in pixels or em
-  * @param {boolean} options.nodeintegration
-  * @param {String} options.cssText
-  * @param {boolean} options.uiDraggable
-  * @param {boolean} options.uiClosable
-  * @param {object} options.deviceEmulation
-  * @param {Number} options.deviceEmulation.scale
-  * @returns {ViewObject} View object
-  */
+   * Creates a view object in the window
+   *
+   * options:
+   *  - url
+   *  - position (label or grid-top & gridLeft)
+   *  - width // in px or em
+   *  - height // in px or em
+   *  - cssText (string)
+   *  - nodeintegration (boolean)
+   *
+   * @param {Object} options
+   * @param {String} options.url
+   * @param {Object|String} [options.position]
+   * @param {Number} options.position.gridTop
+   * @param {Number} options.position.gridLeft
+   * @param {String} options.width - in pixels or em
+   * @param {String} options.height - in pixels or em
+   * @param {boolean} options.nodeintegration
+   * @param {String} options.cssText
+   * @param {boolean} options.uiDraggable
+   * @param {boolean} options.uiClosable
+   * @param {object} options.deviceEmulation
+   * @param {Number} options.deviceEmulation.scale
+   * @returns {ViewObject} View object
+   */
   async createViewObject(options: ViewObjectOptions): Promise<ViewObject> {
     const cmd = {
       command: 'create-view-object',
@@ -433,6 +458,6 @@ export class DisplayWindow {
     if (content.status === 'error') {
       throw new Error(`ViewObject not created: ${content.message}`);
     }
-    return new ViewObject(this.io, content);
+    return new ViewObject(this.io, this, content);
   }
 }

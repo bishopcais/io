@@ -1,5 +1,6 @@
 import { Io } from '@cisl/io/io';
 import { RabbitMessage } from '@cisl/io/types';
+import { DisplayWindow } from './display-window';
 import { ResponseContent } from './types';
 
 export interface DeviceEmulationOptions {
@@ -29,11 +30,11 @@ export interface ViewObjectOptions {
   position?: {
     gridLeft: number;
     gridTop: number;
-  }
+  };
   slide?: {
     direction: 'left' | 'right' | 'down' | 'up';
     cascade: boolean;
-  }
+  };
   uiDraggable: boolean;
   uiClosable: boolean;
   nodeIntegration: boolean;
@@ -42,18 +43,18 @@ export interface ViewObjectOptions {
     screenSize?: {
       height: number;
       width: number;
-    }
+    };
     viewPosition?: {
       x: number;
       y: number;
-    }
+    };
     deviceScaleFactor?: number;
     viewSize?: {
       height: number;
       width: number;
-    }
+    };
     scale: number;
-  }
+  };
 }
 
 export interface ViewObjectRequestResponse {
@@ -73,11 +74,22 @@ export class ViewObject {
 
   public displayName: string;
 
+  private window: DisplayWindow;
+
   public windowName: string;
 
   private displayContextName: string;
 
-  constructor(io: Io, options: { viewId: string; displayName: string; displayContextName: string; windowName: string; }) {
+  constructor(
+    io: Io,
+    window: DisplayWindow,
+    options: {
+      viewId: string;
+      displayName: string;
+      displayContextName: string;
+      windowName: string;
+    },
+  ) {
     if (!io.rabbit) {
       throw new Error('Could not find RabbitMQ instance');
     }
@@ -85,11 +97,18 @@ export class ViewObject {
     this.viewId = options.viewId;
     this.displayName = options.displayName;
     this.displayContextName = options.displayContextName;
-    this.windowName = options.windowName;
+    this.window = window;
+    this.windowName = window.windowName;
   }
 
-  private async _postRequest<T = any>(data: { command: string; options: { viewId: string; [key: string]: unknown }; }): Promise<T> {
-    const res = await this.io.rabbit.publishRpc(`rpc-display-${this.displayName}`, data);
+  private async _postRequest<T = any>(data: {
+    command: string;
+    options: { viewId: string; [key: string]: unknown };
+  }): Promise<T> {
+    const res = await this.io.rabbit.publishRpc(
+      `rpc-display-${this.displayName}`,
+      data,
+    );
     if (typeof res.content !== 'object' || Buffer.isBuffer(res.content)) {
       throw new Error('Invalid expected response');
     }
@@ -145,7 +164,7 @@ export class ViewObject {
    * enables device emulation
    * @param {Object} options http://electron.atom.io/docs/api/web-contents/#contentsenabledeviceemulationparameters
    * @returns {display_rpc_result}
-  */
+   */
   enableDeviceEmulation(options: DeviceEmulationOptions): Promise<object> {
     const cmd = {
       command: 'enable-device-emulation',
@@ -232,14 +251,42 @@ export class ViewObject {
    * @param {Object} options
    * @returns {display_rpc_result}
    */
-  setBounds(options: {width: number; height: number; viewId?: string}): Promise<object> {
+  setBounds(options: {
+    gridLeft?: number;
+    gridTop?: number;
+    left?: number;
+    top?: number;
+    widthFactor?: number;
+    width?: number;
+    heightFactor?: number;
+    height?: number;
+  }): Promise<object> {
     // if(options.scaleContent){
     //     let w = parseFloat(options.width)
     //     let h = parseFloat(options.height)
     //     let dia = Math.sqrt( Math.pow(w,2) + Math.pow(h,2) )
     //     options.scale = dia * 1.0 /this.o_diagonal
     // }
-    options.viewId = this.viewId;
+    console.log(this.window.uniformGridCellSize);
+    if (options.gridLeft) {
+      options.left = this.window.uniformGridCellSize.width * (options.gridLeft - 1);
+      delete options.gridLeft;
+    }
+    if (options.gridTop) {
+      options.top = this.window.uniformGridCellSize.height * (options.gridTop - 1);
+      delete options.gridTop;
+    }
+    if (options.widthFactor) {
+      options.width =
+        this.window.uniformGridCellSize.width * options.widthFactor;
+      delete options.widthFactor;
+    }
+    if (options.heightFactor) {
+      options.height =
+        this.window.uniformGridCellSize.height * options.heightFactor;
+      delete options.heightFactor;
+    }
+    console.log(options);
     const cmd = {
       command: 'set-bounds',
       options: {
@@ -293,9 +340,9 @@ export class ViewObject {
   }
 
   /**
-    * opens debug console
-    * @returns {display_rpc_result}
-    */
+   * opens debug console
+   * @returns {display_rpc_result}
+   */
   openDevTools(): Promise<object> {
     const cmd = {
       command: 'view-object-dev-tools',
@@ -339,9 +386,9 @@ export class ViewObject {
   }
 
   /**
-    * gets if audio muted
-    * @returns {display_rpc_result}
-    */
+   * gets if audio muted
+   * @returns {display_rpc_result}
+   */
   isAudioMuted(): Promise<object> {
     const cmd = {
       command: 'get-audio-muted',
@@ -353,54 +400,79 @@ export class ViewObject {
   }
 
   private _on(topic: string, handler: (response: RabbitMessage) => void): void {
-    this.io.rabbit.onTopic(topic, (response) => {
-      if (Buffer.isBuffer(response.content) || typeof response.content !== 'object') {
-        throw new Error('invalid response received');
-      }
-      if (handler != null && (response.content as ResponseContent).details.viewId == this.viewId) {
-        handler(response);
-      }
-    }).catch(() => { /* pass */ });
+    this.io.rabbit
+      .onTopic(topic, (response) => {
+        if (
+          Buffer.isBuffer(response.content) ||
+          typeof response.content !== 'object'
+        ) {
+          throw new Error('invalid response received');
+        }
+        if (
+          handler != null &&
+          (response.content as ResponseContent).details.viewId == this.viewId
+        ) {
+          handler(response);
+        }
+      })
+      .catch(() => {
+        /* pass */
+      });
   }
 
   /**
-  * viewObject hidden event
-  * @param {viewObjectBasicEventCallback} handler
-  */
+   * viewObject hidden event
+   * @param {viewObjectBasicEventCallback} handler
+   */
   onHidden(handler: (response: RabbitMessage) => void): void {
-    this._on(`display.${this.displayContextName}.viewObjectHidden.${this.viewId}`, handler);
+    this._on(
+      `display.${this.displayContextName}.viewObjectHidden.${this.viewId}`,
+      handler,
+    );
   }
 
   /**
-    * viewObject became visible event
-    * @param {viewObjectBasicEventCallback} handler
-    */
+   * viewObject became visible event
+   * @param {viewObjectBasicEventCallback} handler
+   */
   onShown(handler: (response: RabbitMessage) => void): void {
-    this._on(`display.${this.displayContextName}.viewObjectShown.${this.viewId}`, handler);
+    this._on(
+      `display.${this.displayContextName}.viewObjectShown.${this.viewId}`,
+      handler,
+    );
   }
 
   /**
-  * viewObject closed event
-  * @param {viewObjectBasicEventCallback} handler
-  */
+   * viewObject closed event
+   * @param {viewObjectBasicEventCallback} handler
+   */
   onClosed(handler: (response: RabbitMessage) => void): void {
-    this._on(`display.${this.displayContextName}.viewObjectClosed.${this.viewId}`, handler);
+    this._on(
+      `display.${this.displayContextName}.viewObjectClosed.${this.viewId}`,
+      handler,
+    );
   }
 
   /**
-    * viewObject bounds changed event
-    * @param {viewObjectBoundsEventCallback} handler
-    */
+   * viewObject bounds changed event
+   * @param {viewObjectBoundsEventCallback} handler
+   */
   onBoundsChanged(handler: (response: RabbitMessage) => void): void {
-    this._on(`display.${this.displayContextName}.viewObjectBoundsChanged.${this.viewId}`, handler);
+    this._on(
+      `display.${this.displayContextName}.viewObjectBoundsChanged.${this.viewId}`,
+      handler,
+    );
   }
 
   /**
-  * viewObject URL changed event
-  * @param {viewObjectURLEventCallback} handler
-  */
+   * viewObject URL changed event
+   * @param {viewObjectURLEventCallback} handler
+   */
   onUrlChanged(handler: (response: RabbitMessage) => void): void {
-    this._on(`display.${this.displayContextName}.viewObjectUrlChanged.${this.viewId}`, handler);
+    this._on(
+      `display.${this.displayContextName}.viewObjectUrlChanged.${this.viewId}`,
+      handler,
+    );
   }
 
   /**
@@ -408,7 +480,10 @@ export class ViewObject {
    * @param {viewObjectURLEventCallback} handler
    */
   onUrlReloaded(handler: (response: RabbitMessage) => void): void {
-    this._on(`display.${this.displayContextName}.viewObjectUrlChanged.${this.viewId}`, handler);
+    this._on(
+      `display.${this.displayContextName}.viewObjectUrlChanged.${this.viewId}`,
+      handler,
+    );
   }
 
   /**
@@ -416,7 +491,10 @@ export class ViewObject {
    * @param {viewObjectBasicEventCallback} handler
    */
   onCrashed(handler: (response: RabbitMessage) => void): void {
-    this._on(`display.${this.displayContextName}.viewObjectCrashed.${this.viewId}`, handler);
+    this._on(
+      `display.${this.displayContextName}.viewObjectCrashed.${this.viewId}`,
+      handler,
+    );
   }
 
   /**
@@ -424,14 +502,20 @@ export class ViewObject {
    * @param {viewObjectBasicEventCallback} handler
    */
   onGPUCrashed(handler: (response: RabbitMessage) => void): void {
-    this._on(`display.${this.displayContextName}.viewObjectGPUCrashed.${this.viewId}`, handler);
+    this._on(
+      `display.${this.displayContextName}.viewObjectGPUCrashed.${this.viewId}`,
+      handler,
+    );
   }
 
   /**
-  * viewObject plugin crashed event
-  * @param {viewObjectBasicEventCallback} handler
-  */
+   * viewObject plugin crashed event
+   * @param {viewObjectBasicEventCallback} handler
+   */
   onPluginCrashed(handler: (response: RabbitMessage) => void): void {
-    this._on(`display.${this.displayContextName}.viewObjectPluginCrashed.${this.viewId}`, handler);
+    this._on(
+      `display.${this.displayContextName}.viewObjectPluginCrashed.${this.viewId}`,
+      handler,
+    );
   }
 }

@@ -24,7 +24,8 @@ export interface IoCog extends Cog {
 
 export type RabbitContentType = Buffer | string | number | unknown;
 
-export interface RabbitMessage<T = RabbitContentType> extends Omit<Message, 'content'> {
+export interface RabbitMessage<T = RabbitContentType>
+  extends Omit<Message, 'content'> {
   content: T;
 }
 

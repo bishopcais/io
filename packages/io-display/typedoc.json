@@ -1,11 +1,14 @@
 {
   "$schema": "https://typedoc.org/schema.json",
-  "exclude": [
-    "dist"
+  "exclude": ["dist"],
+  "entryPoints": [
+    "src/index.ts",
+    "src/display-context.ts",
+    "src/display-window.ts",
+    "src/types.ts",
+    "src/view-object.ts"
   ],
-  "entryPoints": ["src/index.ts", "src/display-context.ts", "src/display-window.ts", "src/types.ts", "src/view-object.ts"],
-  "plugin": [
-  ],
+  "plugin": [],
   "readme": "README.md",
   "excludeInternal": true,
   "sort": ["source-order"]

@@ -60,7 +60,8 @@ export interface BaseResponse {
   displayName: string;
 }
 
-export interface DisplayUrlOptions extends Pick<ViewObjectOptions, 'slide' | 'deviceEmulation'> {
+export interface DisplayUrlOptions
+  extends Pick<ViewObjectOptions, 'slide' | 'deviceEmulation'> {
   left?: number;
   top?: number;
   position?: {

@@ -15,7 +15,8 @@
     "io-speaker": "yarn workspace @cisl/io-speaker",
     "lint": "eslint packages/*/src/**/*.ts packages/*/test/**/*.ts",
     "test": "jest",
-    "postversion": "ts-node utils/version.ts"
+    "postversion": "ts-node utils/version.ts",
+    "whoami": "npm whoami"
   },
   "workspaces": {
     "packages": [
@@ -41,7 +42,10 @@
     "@types/fs-extra": "^9.0.13",
     "@types/node": "^12",
     "@types/rimraf": "^3.0.2",
+    "eslint-config-prettier": "^8.3.0",
+    "eslint-plugin-prettier": "^4.0.0",
     "fs-extra": "^10.0.0",
+    "prettier": "^2.5.1",
     "rimraf": "^3.0.2",
     "ts-node": "^10.2.1"
   }

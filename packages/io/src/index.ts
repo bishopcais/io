@@ -2,7 +2,7 @@ import { CogLoaderOptions } from '@cisl/cog-loader';
 import { createHash } from 'crypto';
 import { registerPlugins, runRegisterFunctions, Io } from './io';
 
-let instances: {[key: string]: Io} = {};
+let instances: { [key: string]: Io } = {};
 const emptyHash = createHash('md5').update('').digest('hex');
 
 /**
@@ -21,7 +21,9 @@ const emptyHash = createHash('md5').update('').digest('hex');
  * however the defaults should usually suffice in most cases.
  */
 function io(options?: CogLoaderOptions): Io {
-  const hash = createHash('md5').update(JSON.stringify(options || '')).digest('hex');
+  const hash = createHash('md5')
+    .update(JSON.stringify(options || ''))
+    .digest('hex');
   if (instances[hash]) {
     return instances[hash];
   }

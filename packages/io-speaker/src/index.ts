@@ -32,15 +32,21 @@ export class Speaker {
    * For a full list of voice you can use, check [Watson TTS website](http://www.ibm.com/watson/developercloud/doc/text-to-speech/http.shtml#voices).
    * @returns {Promise<Object>} Resolves to "succeeded" or "interrupted".
    */
-  public speak(text: string, options: {duration?: number, environment?: string, voice?: string} = {}): Promise<RabbitMessage> {
+  public speak(
+    text: string,
+    options: { duration?: number; environment?: string; voice?: string } = {},
+  ): Promise<RabbitMessage> {
     if (!options.duration) {
       // We assume a minimum of 500 milliseconds taken per word, with an added buffer of 4 seconds. This seems to work well from empirical tests.
-      options.duration = (Math.max((text.match(/[ ]+/g)||[]).length * 500, 20 * 1000) + 4000);
+      options.duration =
+        Math.max((text.match(/[ ]+/g) || []).length * 500, 20 * 1000) + 4000;
     }
 
     return this.rabbit.publishRpc(
-      `rpc-speaker-${options.environment ? `${options.environment}-` : ''}speakText`,
-      Object.assign({}, options, {text}),
+      `rpc-speaker-${
+        options.environment ? `${options.environment}-` : ''
+      }speakText`,
+      Object.assign({}, options, { text }),
       { expiration: options.duration },
     );
   }
@@ -49,7 +55,9 @@ export class Speaker {
    * Clear the speaker-worker cache
    */
   public clearCache(): void {
-    this.rabbit.publishTopic('speaker.command.cache.clear', '').catch(() => { /* pass */ });
+    this.rabbit.publishTopic('speaker.command.cache.clear', '').catch(() => {
+      /* pass */
+    });
   }
 
   /**
@@ -57,7 +65,11 @@ export class Speaker {
    * @param {number} [change] - The change percentage amount.
    */
   public changeVolume(change: number): void {
-    this.rabbit.publishTopic('speaker.command.volume.change', { change }).catch(() => { /* pass */ });
+    this.rabbit
+      .publishTopic('speaker.command.volume.change', { change })
+      .catch(() => {
+        /* pass */
+      });
   }
 
   /**
@@ -81,15 +93,22 @@ export class Speaker {
    * @returns {Promise} Resolves to content "done".
    */
   public stop(options?: { environment?: string }): Promise<RabbitMessage> {
-    return this.rabbit.publishRpc(`rpc-speaker${options.environment ? `${options.environment}-` : ''}-stop`, '');
+    return this.rabbit.publishRpc(
+      `rpc-speaker${options.environment ? `${options.environment}-` : ''}-stop`,
+      '',
+    );
   }
 
   public beginSpeak(msg: Record<string, unknown>): void {
-    this.rabbit.publishTopic('speaker.speak.begin', msg).catch(() => { /* pass */ });
+    this.rabbit.publishTopic('speaker.speak.begin', msg).catch(() => {
+      /* pass */
+    });
   }
 
   public endSpeak(msg: Record<string, unknown>): void {
-    this.rabbit.publishTopic('speaker.speak.end', msg).catch(() => { /* pass */ });
+    this.rabbit.publishTopic('speaker.speak.end', msg).catch(() => {
+      /* pass */
+    });
   }
 
   /**
@@ -97,9 +116,13 @@ export class Speaker {
    * @param  {speakSubscriptionCallback} handler - The callback for handling the speaking events.
    */
   public onBeginSpeak(handler: SpeakSubscriptionCallback): void {
-    this.rabbit.onTopic('speaker.speak.begin', (message): void => {
-      handler(message);
-    }).catch(() => { /* pass */ });
+    this.rabbit
+      .onTopic('speaker.speak.begin', (message): void => {
+        handler(message);
+      })
+      .catch(() => {
+        /* pass */
+      });
   }
 
   /**
@@ -107,9 +130,13 @@ export class Speaker {
    * @param  {speakSubscriptionCallback} handler - The callback for handling the speaking events.
    */
   public onEndSpeak(handler: SpeakSubscriptionCallback): void {
-    this.rabbit.onTopic('speaker.speak.end', (message): void => {
-      handler(message);
-    }).catch(() => { /* pass */ });
+    this.rabbit
+      .onTopic('speaker.speak.end', (message): void => {
+        handler(message);
+      })
+      .catch(() => {
+        /* pass */
+      });
   }
 }
 
