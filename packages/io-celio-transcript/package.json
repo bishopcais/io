@@ -1,6 +1,6 @@
 {
   "name": "@cisl/io-celio-transcript",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "Plugin for @cisl/io for interop with transcript-worker using legacy celio topics/queues",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

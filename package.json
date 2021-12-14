@@ -1,6 +1,6 @@
 {
   "name": "io",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "main": "index.js",
   "license": "MIT",
   "private": true,
@@ -15,8 +15,7 @@
     "io-speaker": "yarn workspace @cisl/io-speaker",
     "lint": "eslint packages/*/src/**/*.ts packages/*/test/**/*.ts",
     "test": "jest",
-    "postversion": "ts-node utils/version.ts",
-    "whoami": "npm whoami"
+    "postversion": "ts-node utils/version.ts"
   },
   "workspaces": {
     "packages": [
