@@ -11,7 +11,7 @@ npm install @cisl/io-display
 ## Usage
 
 ```javascript
-import cislio, { registerPlugins } from '@cisl/io';
+import cislio from '@cisl/io';
 import '@cisl/io-display';
 
 const io = cislio();
