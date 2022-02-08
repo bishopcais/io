@@ -133,7 +133,8 @@ export class Rabbit {
     }
 
     const connectionOptions: TLSSocketOptions = {};
-    if (this.options.tls === true || this.options.ssl === true) {
+    const useSsl = this.options.tls === true || this.options.ssl === true;
+    if (useSsl) {
       if (!this.options.cert && !this.options.key && !this.options.ca) {
         throw new Error('Missing arguments for using SSL for RabbitMQ');
       }
@@ -173,7 +174,7 @@ export class Rabbit {
 
     // Make a shared channel for publishing and subscribe
     this.pch = pconn.then((conn: amqplib.Connection) => conn.createChannel());
-    this.mgmturl = `http://${this.options.username}:${this.options.password}@${this.options.hostname}:15672/api`;
+    this.mgmturl = `${useSsl ? 'https' : 'http'}://${this.options.username}:${this.options.password}@${this.options.hostname}:${useSsl ? 15671 : 15672}/api`;
     this.vhost = this.options.vhost === '/' ? '%2f' : this.options.vhost || '';
     this.prefix = this.options.prefix;
     this.exchange = io.config.get<string>('rabbit:exchange');
