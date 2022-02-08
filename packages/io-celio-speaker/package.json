@@ -1,6 +1,6 @@
 {
   "name": "@cisl/io-celio-speaker",
-  "version": "1.4.1",
+  "version": "1.4.2",
   "description": "Plugin for @cisl/io for interop with speaker-worker using legacy celio topics/queues",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
