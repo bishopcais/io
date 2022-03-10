@@ -1,6 +1,6 @@
 {
   "name": "@cisl/io-speaker",
-  "version": "1.4.3",
+  "version": "1.4.4",
   "description": "Plugin for @cisl/io for interop with speaker-worker",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
