@@ -1,4 +1,5 @@
 import fs from 'fs';
+import https from 'https';
 import fetch from 'node-fetch';
 import amqplib, { Replies } from 'amqplib';
 import { Options as ConnectOptions } from 'amqplib/properties';
@@ -66,6 +67,8 @@ export class Rabbit {
   private io: Io;
 
   private timeout = 30000;
+
+  private httpsAgent: https.Agent | undefined;
 
   /**
    * Rabbit constructor.
@@ -140,19 +143,26 @@ export class Rabbit {
       }
 
       connectObj.protocol = 'amqps';
+      const agentOptions: https.AgentOptions = {};
       if (this.options.cert) {
         connectionOptions.cert = fs.readFileSync(this.options.cert);
+        agentOptions.cert = connectionOptions.cert;
       }
       if (this.options.key) {
         connectionOptions.key = fs.readFileSync(this.options.key);
+        agentOptions.key = connectionOptions.key;
       }
       if (this.options.ca) {
         connectionOptions.ca = [fs.readFileSync(this.options.ca)];
+        agentOptions.ca = connectionOptions.ca;
       }
 
       if (this.options.passphrase) {
         connectionOptions.passphrase = this.options.passphrase;
+        agentOptions.passphrase = connectionOptions.passphrase;
       }
+
+      this.httpsAgent = new https.Agent(agentOptions);
     }
 
     this.conn = null;
@@ -174,7 +184,9 @@ export class Rabbit {
 
     // Make a shared channel for publishing and subscribe
     this.pch = pconn.then((conn: amqplib.Connection) => conn.createChannel());
-    this.mgmturl = `${useSsl ? 'https' : 'http'}://${this.options.username}:${this.options.password}@${this.options.hostname}:${useSsl ? 15671 : 15672}/api`;
+    this.mgmturl = `${useSsl ? 'https' : 'http'}://${this.options.username}:${
+      this.options.password
+    }@${this.options.hostname}:${useSsl ? 15671 : 15672}/api`;
     this.vhost = this.options.vhost === '/' ? '%2f' : this.options.vhost || '';
     this.prefix = this.options.prefix;
     this.exchange = io.config.get<string>('rabbit:exchange');
@@ -682,6 +694,9 @@ export class Rabbit {
   public async getQueues(): Promise<QueueState[]> {
     const json = (await fetch(
       `${this.mgmturl}/queues/${this.vhost}?columns=state,name`,
+      {
+        agent: this.httpsAgent || undefined,
+      },
     ).then((res) => res.json())) as QueueState[];
     return json;
   }
