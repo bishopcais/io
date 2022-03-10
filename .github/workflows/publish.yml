@@ -19,20 +19,14 @@ jobs:
           node-version: ${{ env.node-version }}
           registry-url: 'https://registry.npmjs.org'
 
+      - run: echo "//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}" >> ~/.npmrc
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
       - run: yarn
 
       - run: yarn workspace @cisl/io publisher
-        env:
-          NODE_AUTH_TOKEN: ${{secrets.NPM_TOKEN}}
       - run: yarn workspace @cisl/io-celio-speaker publisher
-        env:
-          NODE_AUTH_TOKEN: ${{secrets.NPM_TOKEN}}
       - run: yarn workspace @cisl/io-celio-transcript publisher
-        env:
-          NODE_AUTH_TOKEN: ${{secrets.NPM_TOKEN}}
       - run: yarn workspace @cisl/io-display publisher
-        env:
-          NODE_AUTH_TOKEN: ${{secrets.NPM_TOKEN}}
       - run: yarn workspace @cisl/io-speaker publisher
-        env:
-          NODE_AUTH_TOKEN: ${{secrets.NPM_TOKEN}}
