@@ -271,11 +271,13 @@ export class ViewObject {
     // }
     console.log(this.window.uniformGridCellSize);
     if (options.gridLeft) {
-      options.left = this.window.uniformGridCellSize.width * (options.gridLeft - 1);
+      options.left =
+        this.window.uniformGridCellSize.width * (options.gridLeft - 1);
       delete options.gridLeft;
     }
     if (options.gridTop) {
-      options.top = this.window.uniformGridCellSize.height * (options.gridTop - 1);
+      options.top =
+        this.window.uniformGridCellSize.height * (options.gridTop - 1);
       delete options.gridTop;
     }
     if (options.widthFactor) {
