@@ -619,6 +619,53 @@ export class DisplayContext {
     options: ViewObjectOptions,
     windowName = 'main',
   ): Promise<ViewObject> {
+    const uniformGridCellSize = await this.displayWindows
+      .get(windowName)
+      .getUniformGridCellSize();
+
+    if (
+      (options.width === undefined || options.height === undefined) &&
+      uniformGridCellSize === undefined
+    ) {
+      throw new Error('Uniform grid cell size must be initialized');
+    }
+
+    if (options.width === undefined && options.widthFactor === undefined) {
+      throw new Error('width or widthFactor is required');
+    }
+    if (options.height === undefined && options.heightFactor === undefined) {
+      throw new Error('height or heightFactor is required');
+    }
+
+    options = {
+      nodeIntegration: false,
+      uiDraggable: true,
+      uiClosable: true,
+      ...(uniformGridCellSize &&
+      options.top === undefined &&
+      options.left === undefined
+        ? {
+            position: {
+              gridLeft: 1,
+              gridTop: 1,
+            },
+          }
+        : {}),
+      ...options,
+      width:
+        options.width !== undefined
+          ? typeof options.width === 'string'
+            ? options.width
+            : `${options.width}px`
+          : `${options.widthFactor * uniformGridCellSize.width}px`,
+      height:
+        options.height !== undefined
+          ? typeof options.height === 'string'
+            ? options.height
+            : `${options.height}px`
+          : `${options.heightFactor * uniformGridCellSize.height}px`,
+    };
+
     const displayWindow = this.displayWindows.get(windowName);
     if (!displayWindow) {
       throw new Error('Invalid window name');

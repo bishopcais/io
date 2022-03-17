@@ -23,8 +23,10 @@ export interface DeviceEmulationOptions {
 
 export interface ViewObjectOptions {
   url: string;
-  width: string;
-  height: string;
+  width?: number | string;
+  widthFactor?: number;
+  height?: number | string;
+  heightFactor?: number;
   left?: number;
   top?: number;
   position?: {
