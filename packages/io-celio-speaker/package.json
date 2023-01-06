@@ -15,7 +15,7 @@
     "tsc-publish": "tsc-publish"
   },
   "engines": {
-    "node": ">=8"
+    "node": ">=12"
   },
   "contributors": [
     {

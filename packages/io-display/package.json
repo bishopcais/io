@@ -6,7 +6,7 @@
   "types": "dist/index.d.ts",
   "typedocMain": "src/index.ts",
   "engines": {
-    "node": ">=6.0.0"
+    "node": ">=12"
   },
   "contributors": [
     {
