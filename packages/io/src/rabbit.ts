@@ -184,9 +184,27 @@ export class Rabbit {
 
     // Make a shared channel for publishing and subscribe
     this.pch = pconn.then((conn: amqplib.Connection) => conn.createChannel());
-    this.mgmturl = `${useSsl ? 'https' : 'http'}://${this.options.username}:${
-      this.options.password
-    }@${this.options.hostname}:${useSsl ? 15671 : 15672}/api`;
+    if (this.options.mgmtUrl) {
+      this.mgmturl = this.options.mgmtUrl;
+    } else {
+      this.mgmturl = 'http';
+      if (
+        this.options.mgmtSsl === true ||
+        (this.options.mgmtSsl === undefined && useSsl)
+      ) {
+        this.mgmturl += 's';
+      }
+      this.mgmturl += '://';
+      this.mgmturl += `${this.options.mgmtUsername || this.options.username}`;
+      this.mgmturl += ':';
+      this.mgmturl += `${this.options.mgmtPassword || this.options.password}`;
+      this.mgmturl += '@';
+      this.mgmturl += `${this.options.mgmtHostname || this.options.hostname}`;
+      this.mgmturl += ':';
+      this.mgmturl += `${this.options.mgmtPort || `${useSsl ? 15671 : 15672}`}`;
+      this.mgmturl += '/api';
+    }
+
     this.vhost = this.options.vhost === '/' ? '%2f' : this.options.vhost || '';
     this.prefix = this.options.prefix;
     this.exchange = io.config.get<string>('rabbit:exchange');

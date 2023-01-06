@@ -74,6 +74,30 @@ And optionally define a `passphrase` to use for the key file.
 
 You can access the RabbitMQ object by using `io.rabbit`.
 
+`io.rabbit` will also attempt to connect to the
+[management plugin](https://www.rabbitmq.com/management.html) to allow monitoring
+queue status. By default, it will use the same details as the regular RabbitMQ
+URL to connect and assumes port `15671` for non-SSL and `15672` for SSL. If you
+wish to use a different detail, you can append `mgmt_` to any of the same
+variables as used for above. The full list is:
+
+```typescript
+interface RabbitOptions {
+  // ...
+
+  mgmtSsl?: boolean;
+  mgmtUrl?: string;
+  mgmtHostname?: string;
+  mgmtPort?: number;
+  mgmtUsername?: string;
+  mgmtPassword?: string;
+}
+```
+
+If you specify `mgmtUrl`, then it will only use that URL verbatim. Otherwise, it'll use the other
+parts to build the fully qualified URL to use. For any value omitted, it'll default to what was
+used for the regular connection details.
+
 #### Usage
 
 ```typescript

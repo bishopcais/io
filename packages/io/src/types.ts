@@ -59,4 +59,11 @@ export interface RabbitOptions {
   key?: string;
   ca?: string;
   passphrase?: string;
+
+  mgmtSsl?: boolean;
+  mgmtUrl?: string;
+  mgmtHostname?: string;
+  mgmtPort?: number;
+  mgmtUsername?: string;
+  mgmtPassword?: string;
 }
