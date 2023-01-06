@@ -16,8 +16,6 @@ import {
   RabbitContentType,
 } from './types';
 
-import type Bluebird from 'bluebird';
-
 export interface Subscription extends amqplib.Replies.Consume {
   unsubscribe: () => void;
 }
@@ -54,7 +52,7 @@ export class Rabbit {
 
   private conn: amqplib.Connection | null;
 
-  private pch: Bluebird<amqplib.Channel>;
+  private pch: Promise<amqplib.Channel>;
 
   private mgmturl: string;
 
