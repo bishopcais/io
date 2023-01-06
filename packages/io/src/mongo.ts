@@ -6,7 +6,7 @@ import { MongoOptions } from './types';
  * Mongo module.
  *
  * Provides a shallow interface to the underlying mongoose library, available
- * aa the `mongoose` property.
+ * as the `mongoose` property.
  */
 export class Mongo {
   /**
@@ -55,12 +55,7 @@ export class Mongo {
     connString += `${this.options.db}`;
 
     this.mongoose = mongoose;
-    const options: mongoose.ConnectionOptions = {
-      useNewUrlParser: true,
-      useFindAndModify: false,
-      useCreateIndex: true,
-      useUnifiedTopology: true,
-    };
+    const options: mongoose.ConnectOptions = {};
     if (this.options.user) {
       options.user = this.options.user;
     }
